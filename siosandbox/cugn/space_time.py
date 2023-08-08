@@ -33,3 +33,34 @@ def cut_on_dates(ds:xarray.Dataset, start:str, end:str):
 
     # Return
     return ds_cut
+
+def cut_on_months(ds:xarray.Dataset, start:int, end:int):
+    """ Cut on months
+    """
+
+    #
+    months = pandas.to_datetime(ds.time.data).month.values.astype(int)
+
+    if start < end:
+        cut = (months >= start) & (months <= end)
+    else:
+        cut = (months >= start) | (months <= end)
+
+    # Profile
+    ds_cut = ds.isel(profile=cut)
+
+    # Return
+    return ds_cut
+
+def cut_on_lon(ds:xarray.Dataset, lon_min:float, lon_max:float):
+    """ Cut on longitude
+    """
+
+    # Cut
+    cut = (ds.lon >= lon_min) & (ds.lon <= lon_max)
+
+    # Profile
+    ds_cut = ds.isel(profile=cut)
+
+    # Return
+    return ds_cut

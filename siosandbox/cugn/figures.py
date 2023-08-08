@@ -50,6 +50,7 @@ def show_grid(xedges:np.ndarray, yedges:np.ndarray,
 
     if outfile is not None:
         plt.savefig(outfile, bbox_inches='tight')
+        print(f'Saved: {outfile}')
     else:
         plt.show()
 
