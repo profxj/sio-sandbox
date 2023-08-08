@@ -72,6 +72,35 @@ def seasonal(ds):
                  outfile='Figures/oxy_winter.png',
                   vmnx=(-0.2,0.2))
 
+def longitude(ds):
+    
+    # Total map
+    med_oxyT, xedges, yedges, countsT, indices = oxygen.gen_map(ds)
+
+    # Inshore
+    ds_inshore = space_time.cut_on_lon(ds, -119., -115.)
+    med_oxyI, xedges, yedges, countsI, indices = oxygen.gen_map(ds_inshore)
+
+    diffIT = med_oxyI - med_oxyT
+    figures.show_grid(xedges, yedges, diffIT/med_oxyT, 
+              ('Absolute Salinity', 'Potential Density'),
+              r'$\Delta($Dissolved Oxygen) Fractional', 
+                 title='Inshore (lon > -119deg)', cmap='bwr', 
+                 outfile='Figures/oxy_inshore.png',
+                  vmnx=(-0.2,0.2))
+
+    # Offshore
+    ds_offshore = space_time.cut_on_lon(ds, -130., -119.5)
+    med_oxyO, xedges, yedges, countsO, indices = oxygen.gen_map(ds_offshore)
+
+    diffOT = med_oxyO - med_oxyT
+    figures.show_grid(xedges, yedges, diffOT/med_oxyT, 
+              ('Absolute Salinity', 'Potential Density'),
+              r'$\Delta($Dissolved Oxygen) Fractional', 
+                 title='Offshore (lon < -119.5 deg)', cmap='bwr', 
+                 outfile='Figures/oxy_offshore.png',
+                  vmnx=(-0.2,0.2))
+
 def main(flg):
     if flg== 'all':
         flg= np.sum(np.array([2 ** ii for ii in range(25)]))
@@ -90,6 +119,11 @@ def main(flg):
     if flg & (2**1):
         seasonal(ds)
 
+    # Longitude
+    if flg & (2**2):
+        longitude(ds)
+
+
 # Command line execution
 if __name__ == '__main__':
     import sys
@@ -98,6 +132,7 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- Inter annual
         #flg += 2 ** 1  # 2 -- Seasonal
+        #flg += 2 ** 3  # 4 -- In/off shore
     else:
         flg = sys.argv[1]
 
