@@ -12,8 +12,30 @@ import seaborn as sns
 import pandas
 
 from siosandbox.cugn import oxygen
+from siosandbox.cugn import stats
 from siosandbox.cugn import figures
 from siosandbox.cugn import space_time
+
+def total(ds):
+
+    # Total maps
+    med_oxyT, xedges, yedges, countsT, indices, _ = oxygen.gen_map(ds)
+
+    figures.show_grid(xedges, yedges, med_oxyT,
+              ('Absolute Salinity', 'Potential Density'),
+              r'Median Dissolved Oxygen', 
+                 title='All', cmap='jet', 
+                 outfile='Figures/oxy_median_all.png')
+
+
+    rms_oxyT, xedges, yedges, countsT, indices, _ \
+        = oxygen.gen_map(ds, stat='std')
+
+    figures.show_grid(xedges, yedges, rms_oxyT,
+              ('Absolute Salinity', 'Potential Density'),
+              r'RMS(Dissolved Oxygen)', 
+                 title='All', cmap='jet', 
+                 outfile='Figures/oxy_rms_all.png')
 
 
 def inter_annual(ds):
@@ -75,11 +97,11 @@ def seasonal(ds):
 def longitude(ds):
     
     # Total map
-    med_oxyT, xedges, yedges, countsT, indices = oxygen.gen_map(ds)
+    med_oxyT, xedges, yedges, countsT, indices, gd_oxy = oxygen.gen_map(ds)
 
     # Inshore
     ds_inshore = space_time.cut_on_lon(ds, -119., -115.)
-    med_oxyI, xedges, yedges, countsI, indices = oxygen.gen_map(ds_inshore)
+    med_oxyI, xedges, yedges, countsI, indices, _ = oxygen.gen_map(ds_inshore)
 
     diffIT = med_oxyI - med_oxyT
     figures.show_grid(xedges, yedges, diffIT/med_oxyT, 
@@ -91,7 +113,7 @@ def longitude(ds):
 
     # Offshore
     ds_offshore = space_time.cut_on_lon(ds, -130., -119.5)
-    med_oxyO, xedges, yedges, countsO, indices = oxygen.gen_map(ds_offshore)
+    med_oxyO, xedges, yedges, _, _, _ = oxygen.gen_map(ds_offshore)
 
     diffOT = med_oxyO - med_oxyT
     figures.show_grid(xedges, yedges, diffOT/med_oxyT, 
@@ -100,6 +122,27 @@ def longitude(ds):
                  title='Offshore (lon < -119.5 deg)', cmap='bwr', 
                  outfile='Figures/oxy_offshore.png',
                   vmnx=(-0.2,0.2))
+
+def gaussianity(ds):
+    # Generate the grids
+    mean_oxyT, xedges, yedges, countsT, \
+        indices, gd_oxy = oxygen.gen_map(ds, stat='mean')
+
+    # RMS
+    rms_oxyT, xedges, yedges, countsT, \
+        indices, _ = oxygen.gen_map(ds, stat='std')
+
+    # Check gaussianity
+    p_values = stats.chk_grid_gaussianity(gd_oxy, mean_oxyT, rms_oxyT, indices,
+                               countsT)
+
+    figures.show_grid(xedges, yedges, np.log10(p_values),
+              ('Absolute Salinity', 'Potential Density'),
+              r'log10 KS p-value for Normality',
+                 cmap='bone', 
+                 outfile='Figures/oxy_gaussianity.png',
+                 vmnx=(-3,0.))
+
 
 def main(flg):
     if flg== 'all':
@@ -123,6 +166,14 @@ def main(flg):
     if flg & (2**2):
         longitude(ds)
 
+    # Gaussianity
+    if flg & (2**3):
+        gaussianity(ds)
+
+    # Total
+    if flg & (2**4):
+        total(ds)
+
 
 # Command line execution
 if __name__ == '__main__':
@@ -132,7 +183,9 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- Inter annual
         #flg += 2 ** 1  # 2 -- Seasonal
-        #flg += 2 ** 3  # 4 -- In/off shore
+        #flg += 2 ** 2  # 4 -- In/off shore
+        #flg += 2 ** 3  # 8 -- Gaussiantiy
+        #flg += 2 ** 4  # 16 -- Total
     else:
         flg = sys.argv[1]
 
