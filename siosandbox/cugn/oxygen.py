@@ -31,7 +31,7 @@ def gen_map(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
     gd = np.isfinite(ds[xkey]) & np.isfinite(ds[ykey]) & np.isfinite(ds.doxy)
 
     # Histogram
-    med_oxy, xedges, yedges, indices =\
+    med_oxy, xedges, yedges, grid_indices =\
             stats.binned_statistic_2d(
                 ds[xkey].data[gd], 
                 ds[ykey].data[gd], 
@@ -47,4 +47,4 @@ def gen_map(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
                 bins=[bins[xkey], bins[ykey]])
 
     # Return
-    return med_oxy, xedges, yedges, counts, indices, ds.doxy.data[gd]
+    return med_oxy, xedges, yedges, counts, grid_indices, ds.doxy.data[gd], gd

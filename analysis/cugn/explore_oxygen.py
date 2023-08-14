@@ -16,10 +16,12 @@ from siosandbox.cugn import stats
 from siosandbox.cugn import figures
 from siosandbox.cugn import space_time
 
+from IPython import embed
+
 def total(ds):
 
     # Total maps
-    med_oxyT, xedges, yedges, countsT, indices, _ = oxygen.gen_map(ds)
+    med_oxyT, xedges, yedges, countsT, indices, _, _ = oxygen.gen_map(ds)
 
     figures.show_grid(xedges, yedges, med_oxyT,
               ('Absolute Salinity', 'Potential Density'),
@@ -28,7 +30,7 @@ def total(ds):
                  outfile='Figures/oxy_median_all.png')
 
 
-    rms_oxyT, xedges, yedges, countsT, indices, _ \
+    rms_oxyT, xedges, yedges, countsT, indices, _, _ \
         = oxygen.gen_map(ds, stat='std')
 
     figures.show_grid(xedges, yedges, rms_oxyT,
@@ -40,11 +42,11 @@ def total(ds):
 
 def inter_annual(ds):
     # Total map
-    med_oxyT, xedges, yedges, countsT, indices = oxygen.gen_map(ds)
+    med_oxyT, xedges, yedges, countsT, indices, _, _ = oxygen.gen_map(ds)
 
     # Early
     ds_early = space_time.cut_on_dates(ds, '2017-01-01', '2020-01-01')
-    med_oxyE, xedges, yedges, countsE, indices = oxygen.gen_map(ds_early)
+    med_oxyE, xedges, yedges, countsE, indices, _, _ = oxygen.gen_map(ds_early)
 
     diffET = med_oxyE - med_oxyT
     figures.show_grid(xedges, yedges, diffET/med_oxyT, 
@@ -56,7 +58,7 @@ def inter_annual(ds):
 
     # Late
     ds_late = space_time.cut_on_dates(ds, '2020-01-01', '2029-01-01')
-    med_oxyL, xedges, yedges, countsL, indices = oxygen.gen_map(ds_late)
+    med_oxyL, xedges, yedges, countsL, indices, _, _ = oxygen.gen_map(ds_late)
 
     diffLT = med_oxyL - med_oxyT
     figures.show_grid(xedges, yedges, diffLT/med_oxyT, 
@@ -68,11 +70,11 @@ def inter_annual(ds):
 
 def seasonal(ds):
     # Total map
-    med_oxyT, xedges, yedges, countsT, indices = oxygen.gen_map(ds)
+    med_oxyT, xedges, yedges, countsT, indices, _, _ = oxygen.gen_map(ds)
 
     # Summer
     ds_summer = space_time.cut_on_months(ds, 6, 8)
-    med_oxyS, xedges, yedges, countsS, indices = oxygen.gen_map(ds_summer)
+    med_oxyS, xedges, yedges, countsS, indices, _, _ = oxygen.gen_map(ds_summer)
 
     diffST = med_oxyS - med_oxyT
     figures.show_grid(xedges, yedges, diffST/med_oxyT, 
@@ -84,7 +86,7 @@ def seasonal(ds):
 
     # Winter
     ds_winter = space_time.cut_on_months(ds, 12, 2)
-    med_oxyW, xedges, yedges, countsW, indices = oxygen.gen_map(ds_winter)
+    med_oxyW, xedges, yedges, countsW, indices, _, _ = oxygen.gen_map(ds_winter)
 
     diffWT = med_oxyW - med_oxyT
     figures.show_grid(xedges, yedges, diffWT/med_oxyT, 
@@ -97,11 +99,11 @@ def seasonal(ds):
 def longitude(ds):
     
     # Total map
-    med_oxyT, xedges, yedges, countsT, indices, gd_oxy = oxygen.gen_map(ds)
+    med_oxyT, xedges, yedges, countsT, indices, gd_oxy, _ = oxygen.gen_map(ds)
 
     # Inshore
     ds_inshore = space_time.cut_on_lon(ds, -119., -115.)
-    med_oxyI, xedges, yedges, countsI, indices, _ = oxygen.gen_map(ds_inshore)
+    med_oxyI, xedges, yedges, countsI, indices, _, _ = oxygen.gen_map(ds_inshore)
 
     diffIT = med_oxyI - med_oxyT
     figures.show_grid(xedges, yedges, diffIT/med_oxyT, 
@@ -113,7 +115,7 @@ def longitude(ds):
 
     # Offshore
     ds_offshore = space_time.cut_on_lon(ds, -130., -119.5)
-    med_oxyO, xedges, yedges, _, _, _ = oxygen.gen_map(ds_offshore)
+    med_oxyO, xedges, yedges, _, _, _, _ = oxygen.gen_map(ds_offshore)
 
     diffOT = med_oxyO - med_oxyT
     figures.show_grid(xedges, yedges, diffOT/med_oxyT, 
@@ -126,11 +128,11 @@ def longitude(ds):
 def gaussianity(ds):
     # Generate the grids
     mean_oxyT, xedges, yedges, countsT, \
-        indices, gd_oxy = oxygen.gen_map(ds, stat='mean')
+        indices, gd_oxy, _ = oxygen.gen_map(ds, stat='mean')
 
     # RMS
     rms_oxyT, xedges, yedges, countsT, \
-        indices, _ = oxygen.gen_map(ds, stat='std')
+        indices, _, _ = oxygen.gen_map(ds, stat='std')
 
     # Check gaussianity
     p_values = stats.chk_grid_gaussianity(gd_oxy, mean_oxyT, rms_oxyT, indices,
@@ -142,6 +144,51 @@ def gaussianity(ds):
                  cmap='bone', 
                  outfile='Figures/oxy_gaussianity.png',
                  vmnx=(-3,0.))
+
+def outliers(ds):
+
+    # Generate the grid
+    mean_oxyT, xedges, yedges, countsT, \
+        grid_indices, gd_oxy, da_gd = oxygen.gen_map(ds, stat='mean')
+
+    # Outliers
+    outliers = stats.find_outliers(gd_oxy, grid_indices, countsT,
+        95., da_gd, ds=ds)
+
+    times = pandas.to_datetime(ds.time[outliers[:,1]])
+    months = times.month.values.astype(int)
+
+    lons = ds.lon[outliers[:,1]].values
+
+    # Plot a year
+    embed(header='164 of oxy.py')
+
+    year = 2017
+    in_year = times.year == year
+
+    all_gd = in_year
+    
+    plt.clf()
+    ax = plt.gca()
+
+    sc = ax.scatter(lons[all_gd], 
+                    #ds.depth[outliers[:,0]].values[all_gd],
+                    ds.sigma0.data[(outliers[:,0], outliers[:,1])][all_gd],
+               c=months[all_gd], cmap='tab20', s=0.8)
+
+    cb = plt.colorbar(sc)
+    cb.set_label('Month', fontsize=15.)
+    #ax.set_ylim(500,0)
+
+    ax.set_xlabel('Longitude (deg)')
+    #ax.set_ylabel('Depth (m)')
+    ax.set_ylabel('Potential Density')
+    ax.set_title(f'{year} Outliers')
+
+    plt.savefig(f'Figures/oxy_outliers_{year}.png', dpi=300)
+    plt.show()
+
+    embed(header='157 of oxy.py')
 
 
 def main(flg):
@@ -174,6 +221,12 @@ def main(flg):
     if flg & (2**4):
         total(ds)
 
+    # Outliers in sigma, AS 
+    if flg & (2**5):
+        outliers(ds)
+
+
+
 
 # Command line execution
 if __name__ == '__main__':
@@ -186,6 +239,7 @@ if __name__ == '__main__':
         #flg += 2 ** 2  # 4 -- In/off shore
         #flg += 2 ** 3  # 8 -- Gaussiantiy
         #flg += 2 ** 4  # 16 -- Total
+        #flg += 2 ** 5  # 32 -- Outliers
     else:
         flg = sys.argv[1]
 
