@@ -145,15 +145,14 @@ def gaussianity(ds):
                  outfile='Figures/oxy_gaussianity.png',
                  vmnx=(-3,0.))
 
-def outliers(ds):
+def outliers(ds, year:int=2017, pcut:float=95.):
 
     # Generate the grid
     mean_oxyT, xedges, yedges, countsT, \
         grid_indices, gd_oxy, da_gd = oxygen.gen_map(ds, stat='mean')
 
     # Outliers
-    outliers = stats.find_outliers(gd_oxy, grid_indices, countsT,
-        95., da_gd, ds=ds)
+    outliers = stats.find_outliers(gd_oxy, grid_indices, countsT, pcut, da_gd, ds=ds)
 
     times = pandas.to_datetime(ds.time[outliers[:,1]])
     months = times.month.values.astype(int)
@@ -161,9 +160,6 @@ def outliers(ds):
     lons = ds.lon[outliers[:,1]].values
 
     # Plot a year
-    embed(header='164 of oxy.py')
-
-    year = 2017
     in_year = times.year == year
 
     all_gd = in_year
@@ -183,12 +179,12 @@ def outliers(ds):
     ax.set_xlabel('Longitude (deg)')
     #ax.set_ylabel('Depth (m)')
     ax.set_ylabel('Potential Density')
-    ax.set_title(f'{year} Outliers')
+    sign = '>' if pcut > 50. else '<'
+    ax.set_title(f'{year} Outliers: {sign} {int(pcut)}th percentile')
 
-    plt.savefig(f'Figures/oxy_outliers_{year}.png', dpi=300)
+    plt.savefig(f'Figures/oxy_outliers_{year}_p{int(pcut)}.png', dpi=300)
     plt.show()
 
-    embed(header='157 of oxy.py')
 
 
 def main(flg):
@@ -197,7 +193,7 @@ def main(flg):
     else:
         flg= int(flg)
 
-    data_path = '/home/xavier/Projects/Oceanography/Spray/CUGN'
+    data_path = os.getenv('CUGN')
     datafile = 'CUGN_potential_line_90.nc'
     ds = xarray.load_dataset(os.path.join(data_path, datafile))
 
@@ -223,7 +219,8 @@ def main(flg):
 
     # Outliers in sigma, AS 
     if flg & (2**5):
-        outliers(ds)
+        #outliers(ds)
+        outliers(ds, pcut=5.)
 
 
 

@@ -18,7 +18,7 @@ from gsw import conversions, density
 from IPython import embed
 
 def add_potential():
-    data_path = '/home/xavier/Projects/Oceanography/Spray/CUGN'
+    data_path = os.getenv('CUGN') 
 
     # Spray files
     spray_files = glob(os.path.join(data_path, 'CUGN_*.nc'))

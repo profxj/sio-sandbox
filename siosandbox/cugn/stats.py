@@ -67,6 +67,9 @@ def find_outliers(values:np.ndarray,
                   min_counts:int=50,
                   ds=None):
 
+    # upper or lower?
+    high = True if percentile > 50 else False
+
     # Cut on counts
     gd = counts > min_counts
     igd = np.where(gd)
@@ -90,7 +93,10 @@ def find_outliers(values:np.ndarray,
         pct = np.nanpercentile(vals, percentile)
 
         # Outliers
-        ioutliers = np.where(vals > pct)[0]
+        if high:
+            ioutliers = np.where(vals > pct)[0]
+        else:
+            ioutliers = np.where(vals < pct)[0]
         for ii in ioutliers:
             save_outliers.append((da_idx[0][idx_cell[ii]],
                              da_idx[1][idx_cell[ii]]))
