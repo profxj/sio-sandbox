@@ -152,7 +152,7 @@ def outliers(ds, year:int=2017, pcut:float=95.):
         grid_indices, gd_oxy, da_gd = oxygen.gen_map(ds, stat='mean')
 
     # Outliers
-    outliers = stats.find_outliers(gd_oxy, grid_indices, countsT, pcut, da_gd, ds=ds)
+    outliers, _ = stats.find_outliers(gd_oxy, grid_indices, countsT, pcut, da_gd)
 
     times = pandas.to_datetime(ds.time[outliers[:,1]])
     months = times.month.values.astype(int)

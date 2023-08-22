@@ -20,7 +20,8 @@ def show_grid(xedges:np.ndarray, yedges:np.ndarray,
               min_counts:int=None, 
               cmap:str='jet', vmnx:tuple=(None,None),
               title:str=None,
-              afsz:float=14.):
+              afsz:float=14.,
+              show:bool=True):
 
     # Cut on counts
     if min_counts is not None:
@@ -52,7 +53,9 @@ def show_grid(xedges:np.ndarray, yedges:np.ndarray,
         plt.savefig(outfile, bbox_inches='tight')
         print(f'Saved: {outfile}')
     else:
-        plt.show()
+        if show:
+            plt.show()
+    return ax
 
 def set_fontsize(ax, fsz):
     """

@@ -64,8 +64,23 @@ def find_outliers(values:np.ndarray,
                   grid_indices:np.ndarray,
                   counts:np.ndarray, percentile:float,
                   da_gd:np.ndarray,
-                  min_counts:int=50,
-                  ds=None):
+                  min_counts:int=50):
+    """ Find outliers in a grid of values
+
+    Args:
+        values (np.ndarray): All of the values used to construct the grid
+        grid_indices (np.ndarray): Indices of where the values are in the grid
+        counts (np.ndarray): Counts per grid cell
+        percentile (float): Percentile to use for outlier detection
+        da_gd (np.ndarray): Used for indexing in ds space
+        min_counts (int, optional): Minimum counts in the grid
+          to perform analysis. Defaults to 50.
+
+    Returns:
+        tuple:
+            np.ndarray: Outlier indices on ds grid, [depth, profile]
+            np.ndarray: Row, col for each outlier
+    """
 
     # upper or lower?
     high = True if percentile > 50 else False
@@ -78,8 +93,11 @@ def find_outliers(values:np.ndarray,
 
     da_idx = np.where(da_gd)
 
+    # Prep
     save_outliers = []
+    save_rowcol = []
 
+    # Loop on all the (good) grid cells
     for ss in range(ngd_grid_cells):
         # Unpack
         row, col = igd[0][ss], igd[1][ss]
@@ -100,6 +118,7 @@ def find_outliers(values:np.ndarray,
         for ii in ioutliers:
             save_outliers.append((da_idx[0][idx_cell[ii]],
                              da_idx[1][idx_cell[ii]]))
+            save_rowcol.append((row, col))
 
     # Return
-    return np.array(save_outliers)
+    return np.array(save_outliers), np.array(save_rowcol)
