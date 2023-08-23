@@ -21,16 +21,18 @@ def show_grid(xedges:np.ndarray, yedges:np.ndarray,
               cmap:str='jet', vmnx:tuple=(None,None),
               title:str=None,
               afsz:float=14.,
-              show:bool=True):
+              show:bool=True,
+              ax=None):
 
     # Cut on counts
     if min_counts is not None:
         grid[counts < min_counts] = np.nan
 
     # Figure
-    fig = plt.figure(figsize=(8, 8))
-    plt.clf()
-    ax = plt.gca()
+    if ax is None:
+        fig = plt.figure(figsize=(8, 8))
+        plt.clf()
+        ax = plt.gca()
     #
     img = ax.pcolormesh(xedges, yedges, grid.T, cmap=cmap,
                         vmin=vmnx[0], vmax=vmnx[1]) 
@@ -71,3 +73,34 @@ def set_fontsize(ax, fsz):
     for item in ([ax.title, ax.xaxis.label, ax.yaxis.label] +
                  ax.get_xticklabels() + ax.get_yticklabels()):
         item.set_fontsize(fsz)
+
+
+def outlier_by_months(outfile:str, pcut:float, year:int,
+                      lons, sigma0, months,
+                      show:bool=False, ax=None):
+
+    
+    if ax is None:
+        plt.clf()
+        ax = plt.gca()
+
+    sc = ax.scatter( lons,
+                    #ds.depth[outliers[:,-1]].values[all_gd],
+        sigma0,
+        c=months, cmap='tab20', s=0.8)
+
+    cb = plt.colorbar(sc)
+    cb.set_label('Month', fontsize=14.)
+    #ax.set_ylim(499,0)
+
+    ax.set_xlabel('Longitude (deg)')
+    #ax.set_ylabel('Depth (m)')
+    ax.set_ylabel('Potential Density')
+    sign = '>' if pcut > 49. else '<'
+    ax.set_title(f'{year} Outliers: {sign} {int(pcut)}th percentile')
+
+    if outfile is not None:
+        plt.savefig(outfile, dpi=300)
+        print("Saved: ", outfile)
+    if show:
+        plt.show()
