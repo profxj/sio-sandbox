@@ -9,6 +9,7 @@ from scipy import stats
 import pandas
 
 from siosandbox import cat_utils
+from siosandbox.cugn import io as cugn_io
 
 from IPython import embed
 
@@ -91,7 +92,40 @@ def chk_grid_gaussianity(values:np.ndarray, mean_grid:np.ndarray,
 
     return p_values
 
-def find_outliers(values:np.ndarray, 
+def gen_outliers(line:str, pcut:float):
+    
+    # Load and unpack
+    items = cugn_io.load_line(line)
+    ds = items['ds']
+    grid_tbl = items['grid_tbl']
+
+    # Outliers
+    if pcut > 50.:
+        outliers = grid_tbl.doxy_p > pcut
+    else:
+        raise IOError("Need to implement lower percentile")
+
+    grid_outliers = grid_tbl[outliers].copy()
+
+    # Decorate items
+    grid_outliers['times'] = pandas.to_datetime(ds.time[grid_outliers.profile.values].values)
+    grid_outliers['lon'] = ds.lon[grid_outliers.profile.values].values
+    grid_outliers['z'] = ds.depth[grid_outliers.depth.values].values
+
+    # Physical quantities
+    grid_outliers['SA'] = ds.SA.data[(grid_outliers.depth.values, 
+                               grid_outliers.profile.values)]
+    grid_outliers['sigma0'] = ds.sigma0.data[(grid_outliers.depth.values, 
+                               grid_outliers.profile.values)]
+
+    # Others                            
+    grid_outliers['chla'] = ds.chlorophyll_a.data[(grid_outliers.depth.values, 
+                               grid_outliers.profile.values)]
+
+    # Return
+    return grid_outliers, grid_tbl, ds
+
+def old_find_outliers(values:np.ndarray, 
                   grid_indices:np.ndarray,
                   counts:np.ndarray, percentile:float,
                   da_gd:np.ndarray,
@@ -156,7 +190,53 @@ def find_outliers(values:np.ndarray,
     # Return
     return np.array(save_outliers), np.array(save_rowcol), np.array(save_cellidx)
 
-def find_perc(values:np.ndarray, 
+def grab_control_values(outliers:pandas.DataFrame,
+                        grid_tbl:pandas.DataFrame,
+                        metric:str):
+
+    comb_row_col = np.array([col*10000 + row for row,col in zip(outliers.row.values, 
+                                                                outliers.col.values)])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_vals = []
+    for row, col in zip(uni_row, uni_col):
+        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+        vals = grid_tbl[metric].values[in_cell]
+        all_vals += vals.tolist()
+    # Return
+    return all_vals
+
+def find_perc(grid_tbl:pandas.DataFrame, metric:str='doxy'):
+
+    # Find unique to loop over
+    comb_row_col = np.array([col*10000 + row for row,col in zip(grid_tbl.row.values, grid_tbl.col.values)])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_perc = np.zeros(len(grid_tbl))
+
+    for row, col in zip(uni_row, uni_col):
+        # Get indices
+        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+
+        # Values in the cell
+        vals = grid_tbl[metric].values[in_cell]
+
+        srt = np.argsort(vals)
+        in_srt = cat_utils.match_ids(np.arange(len(vals)), srt)
+        perc = np.arange(len(vals))/len(vals-1)*100.
+
+        # Save
+        all_perc[in_cell] = perc[in_srt]
+
+    # Return
+    grid_tbl[f'{metric}_p'] = all_perc
+    return 
+
+def old_find_perc(values:np.ndarray, 
               grid_indices:np.ndarray,
               row_cols, cell_idx):
 

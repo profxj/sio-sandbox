@@ -76,18 +76,16 @@ def set_fontsize(ax, fsz):
 
 
 def outlier_by_months(outfile:str, pcut:float, year:int,
-                      lons, sigma0, months,
-                      show:bool=False, ax=None):
+                      lons, yval, months,
+                      show:bool=False, ax=None,
+                      ylbl:str='Potential Density'):
 
     
     if ax is None:
         plt.clf()
         ax = plt.gca()
 
-    sc = ax.scatter( lons,
-                    #ds.depth[outliers[:,-1]].values[all_gd],
-        sigma0,
-        c=months, cmap='tab20', s=0.8)
+    sc = ax.scatter( lons, yval, c=months, cmap='tab20', s=0.8)
 
     cb = plt.colorbar(sc)
     cb.set_label('Month', fontsize=14.)
@@ -95,7 +93,7 @@ def outlier_by_months(outfile:str, pcut:float, year:int,
 
     ax.set_xlabel('Longitude (deg)')
     #ax.set_ylabel('Depth (m)')
-    ax.set_ylabel('Potential Density')
+    ax.set_ylabel(ylbl) #'Potential Density')
     sign = '>' if pcut > 49. else '<'
     ax.set_title(f'{year} Outliers: {sign} {int(pcut)}th percentile')
 
