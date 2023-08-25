@@ -112,7 +112,7 @@ def outlier_montage(line:str, outl_dict:dict, outfile:str):
             months<=outl_dict['months'][1])
 
     # DOXY CUT BY JXP
-    #idx_o = idx_o & (grid_outliers.doxy >= 300.)
+    idx_o = idx_o & (grid_outliers.doxy >= 300.)
 
     sngl_outliers = grid_outliers[idx_o]
 
