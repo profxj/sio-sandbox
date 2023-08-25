@@ -220,7 +220,7 @@ def main(flg):
     # Outliers in sigma, AS 
     if flg & (2**5):
         #outliers(ds)
-        outliers(ds, pcut=5.)
+        outliers(ds, pcut=2.)
 
 
 
