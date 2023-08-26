@@ -1,3 +1,5 @@
+""" This was the first sandbox.  Things were refactored
+such that this code is largely deprecated """
 # imports
 from importlib import reload
 import os

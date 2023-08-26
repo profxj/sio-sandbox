@@ -6,22 +6,22 @@ import xarray
 from glob import glob
 
 import numpy as np
-from scipy import stats
-
-from matplotlib import pyplot as plt
-import seaborn as sns
 
 import pandas
 
 from gsw import conversions, density
+import gsw
 
 from IPython import embed
 
-def add_potential():
+def add_gsw():
+    """ Add physical quantities to the Spray CUGN data
+    using the TEOS-10 GSW package
+    """
     data_path = os.getenv('CUGN') 
 
     # Spray files
-    spray_files = glob(os.path.join(data_path, 'CUGN_*.nc'))
+    spray_files = glob(os.path.join(data_path, 'CUGN_line_*.nc'))
 
     for spray_file in spray_files:
 
@@ -34,6 +34,7 @@ def add_potential():
         # Prep for new variables
         CT = np.ones_like(ds.temperature.data) * np.nan
         SA = np.ones_like(ds.temperature.data) * np.nan
+        SO = np.ones_like(ds.temperature.data) * np.nan
 
         # Loop on depths
         for zz, z in enumerate(ds.depth.data):
@@ -50,6 +51,9 @@ def add_potential():
                                         p)
             CT[zz,:] = iCT
 
+            # Oxygen
+            SO[zz,:] = gsw.O2sol(iSA, iCT, p, lon, lat)
+
         # sigma0 
         sigma0 = density.sigma0(SA, CT)
 
@@ -60,6 +64,8 @@ def add_potential():
         ds.sigma0.attrs = dict(units='kg/m^3', long_name='potential density anomaly')
         ds['SA'] = (('depth', 'profile'), SA)
         ds.SA.attrs = dict(units='g/kg', long_name='Absolute Salinity')
+        ds['SO'] = (('depth', 'profile'), SA)
+        ds.SO.attrs = dict(units='umol/kg', long_name='Oxygen Concentration')
 
         # Write
         new_spray_file = spray_file.replace('CUGN_', 'CUGN_potential_')
@@ -68,4 +74,4 @@ def add_potential():
 
 
 if __name__ == '__main__':
-    add_potential()
+    add_gsw()

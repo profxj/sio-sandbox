@@ -16,13 +16,22 @@ import pandas
 
 from siosandbox.cugn import grid_utils
 from siosandbox.cugn import figures
-from siosandbox.cugn import space_time
 from siosandbox.cugn import io as cugn_io
 
 from IPython import embed
 
 def build_grid(line_file:str, gridtbl_outfile:str, edges_outfile:str,
                min_counts:int=50):
+    """ Grid up density and salinity for a line
+    to generate a table of grid indices and values
+
+    Args:
+        line_file (str): Identify the line ['90', '67']
+        gridtbl_outfile (str): name of the output table
+        edges_outfile (str): name of the output grid edges
+        min_counts (int, optional): Minimum counts on the
+            grid to be included in the analysis. Defaults to 50.
+    """
     # Dataset
     ds = xarray.load_dataset(line_file)
 
