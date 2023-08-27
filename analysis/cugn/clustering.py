@@ -16,6 +16,7 @@ import pandas
 
 from siosandbox.cugn import grid_utils
 from siosandbox.cugn import figures
+from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
 
 from IPython import embed
@@ -166,6 +167,14 @@ def outlier_montage(line:str, outl_dict:dict, outfile:str):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
     
+def cluster_stats(line:str, perc:float):
+
+    # Load clusters of outliers
+    grid_outliers = clusters.generate_clusters(line, perc)
+
+    # Cluster stats
+    embed(header='cluster_stats')
+    pass
 
 def main(flg):
     if flg== 'all':
@@ -194,6 +203,10 @@ def main(flg):
                         z=[0., 50.], months=[6,8])
         outlier_montage(line, outl_dict, 'Figures/tst.png')
 
+    # Montage
+    if flg & (2**3):
+        cluster_stats('90', perc=98.)
+
 # Command line execution
 if __name__ == '__main__':
     import sys
@@ -202,7 +215,8 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- Build grids
         #flg += 2 ** 1  # 2 -- Year plot
-        #flg += 2 ** 1  # 4 -- Montage
+        #flg += 2 ** 2  # 4 -- Montage
+        #flg += 2 ** 3  # 8 -- Generate clusters
     else:
         flg = sys.argv[1]
 

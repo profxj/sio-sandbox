@@ -93,6 +93,22 @@ def chk_grid_gaussianity(values:np.ndarray, mean_grid:np.ndarray,
     return p_values
 
 def gen_outliers(line:str, pcut:float):
+    """ Generate a table of outliers for a given line
+    and percentile
+
+    We also pass back the grid table and the dataset
+    in case we want to do more analysis
+
+    Args:
+        line (str): line
+        pcut (float): percentile cut
+
+    Raises:
+        IOError: _description_
+
+    Returns:
+        tuple: grid_outliers, grid_tbl, ds
+    """
     
     # Load and unpack
     items = cugn_io.load_line(line)
@@ -116,6 +132,8 @@ def gen_outliers(line:str, pcut:float):
     grid_outliers['SA'] = ds.SA.data[(grid_outliers.depth.values, 
                                grid_outliers.profile.values)]
     grid_outliers['sigma0'] = ds.sigma0.data[(grid_outliers.depth.values, 
+                               grid_outliers.profile.values)]
+    grid_outliers['SO'] = ds.SO.data[(grid_outliers.depth.values, 
                                grid_outliers.profile.values)]
 
     # Others                            
