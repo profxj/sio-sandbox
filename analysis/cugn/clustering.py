@@ -81,7 +81,7 @@ def year_outliers(line:str, year:int=2017, pcut:float=95., show_depth:bool=False
     grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, pcut)
 
     # Time conveniences
-    ptimes = pandas.to_datetime(grid_outliers.times.values)
+    ptimes = pandas.to_datetime(grid_outliers.time.values)
     months = ptimes.month
 
     # Plot a year
@@ -106,7 +106,7 @@ def outlier_montage(line:str, outl_dict:dict, outfile:str):
     grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, outl_dict['perc'])
 
     # Time conveniences
-    ptimes = pandas.to_datetime(grid_outliers.times.values)
+    ptimes = pandas.to_datetime(grid_outliers.time.values)
     months = ptimes.month
 
     # Cut
@@ -173,8 +173,9 @@ def cluster_stats(line:str, perc:float):
     grid_outliers = clusters.generate_clusters(line, perc)
 
     # Cluster stats
+    cluster_stats = clusters.cluster_stats(grid_outliers)
     embed(header='cluster_stats')
-    pass
+
 
 def main(flg):
     if flg== 'all':

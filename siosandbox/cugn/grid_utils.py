@@ -124,11 +124,13 @@ def gen_outliers(line:str, pcut:float):
     grid_outliers = grid_tbl[outliers].copy()
 
     # Decorate items
-    grid_outliers['times'] = pandas.to_datetime(ds.time[grid_outliers.profile.values].values)
+    grid_outliers['time'] = pandas.to_datetime(ds.time[grid_outliers.profile.values].values)
     grid_outliers['lon'] = ds.lon[grid_outliers.profile.values].values
     grid_outliers['z'] = ds.depth[grid_outliers.depth.values].values
 
     # Physical quantities
+    grid_outliers['CT'] = ds.CT.data[(grid_outliers.depth.values, 
+                               grid_outliers.profile.values)]
     grid_outliers['SA'] = ds.SA.data[(grid_outliers.depth.values, 
                                grid_outliers.profile.values)]
     grid_outliers['sigma0'] = ds.sigma0.data[(grid_outliers.depth.values, 

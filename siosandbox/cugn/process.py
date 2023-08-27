@@ -34,6 +34,7 @@ def add_gsw():
         # Prep for new variables
         CT = np.ones_like(ds.temperature.data) * np.nan
         SA = np.ones_like(ds.temperature.data) * np.nan
+        OC = np.ones_like(ds.temperature.data) * np.nan
         SO = np.ones_like(ds.temperature.data) * np.nan
 
         # Loop on depths
@@ -52,7 +53,8 @@ def add_gsw():
             CT[zz,:] = iCT
 
             # Oxygen
-            SO[zz,:] = gsw.O2sol(iSA, iCT, p, lon, lat)
+            OC[zz,:] = gsw.O2sol(iSA, iCT, p, lon, lat)
+            SO[zz,:] = ds.doxy[zz,:] / OC[zz,:] 
 
         # sigma0 
         sigma0 = density.sigma0(SA, CT)
@@ -64,8 +66,8 @@ def add_gsw():
         ds.sigma0.attrs = dict(units='kg/m^3', long_name='potential density anomaly')
         ds['SA'] = (('depth', 'profile'), SA)
         ds.SA.attrs = dict(units='g/kg', long_name='Absolute Salinity')
-        ds['SO'] = (('depth', 'profile'), SA)
-        ds.SO.attrs = dict(units='umol/kg', long_name='Oxygen Concentration')
+        ds['SO'] = (('depth', 'profile'), SO)
+        ds.SO.attrs = dict(long_name='Oxygen Saturation')
 
         # Write
         new_spray_file = spray_file.replace('CUGN_', 'CUGN_potential_')

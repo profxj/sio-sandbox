@@ -8,6 +8,8 @@ from sklearn.cluster import AgglomerativeClustering, DBSCAN
 
 from siosandbox.cugn import grid_utils
 
+from IPython import embed
+
 def generate_clusters(line:str, perc:float,
                       time_scl:float=3.,
                       z_scl:float=5.):
@@ -17,7 +19,7 @@ def generate_clusters(line:str, perc:float,
 
     # ###########
     # Time
-    ptimes = pandas.to_datetime(grid_outliers.times.values)
+    ptimes = pandas.to_datetime(grid_outliers.time.values)
     mjd = ptimes.to_julian_date()
 
     # Offset
@@ -49,3 +51,40 @@ def generate_clusters(line:str, perc:float,
 
     # Return
     return grid_outliers
+
+def cluster_stats(grid_outliers:pandas.DataFrame):
+
+    # Stats
+    cluster_IDs = np.unique(grid_outliers.cluster.values[
+        grid_outliers.cluster.values >= 0])
+
+    # Loop on clusters
+    stats = {}
+    mean_keys = ['z', 'lon','doxy', 'time', 'SA', 'CT', 
+                 'sigma0', 'SO', 'chla']
+    for key in mean_keys:
+        stats[key] = []
+    max_keys = ['doxy', 'SO', 'chla']
+    for key in max_keys:
+        stats['max_'+key] = []
+    # A few others
+    stats['N'] = []
+
+    for cluster_ID in cluster_IDs:
+        # Grab em
+        in_cluster = grid_outliers.cluster.values == cluster_ID
+        stats['N'].append(in_cluster.sum())
+
+        # Means
+        for key in mean_keys:
+            stats[key].append(grid_outliers[in_cluster][key].mean())
+
+        # Max
+        for key in max_keys:
+            stats['max_'+key].append(grid_outliers[in_cluster][key].max())
+
+    # Package
+    stats_tbl = pandas.DataFrame(stats)
+    stats_tbl['cluster'] = cluster_IDs
+
+    return stats_tbl
