@@ -69,6 +69,13 @@ def add_gsw():
         ds['SO'] = (('depth', 'profile'), SO)
         ds.SO.attrs = dict(long_name='Oxygen Saturation')
 
+        # Buoyancy
+        dsigmadz, _ = np.gradient(ds.sigma0.data, 
+                                  float(ds.depth[1]-ds.depth[0]))
+        buoyfreq = np.sqrt(9.8/1025*dsigmadz)/(2*np.pi)*3600
+        ds['N'] = (('depth', 'profile'), buoyfreq)
+        ds.N.attrs = dict(long_name='Buoyancy Frequency', units='cycles/hour')
+
         # Write
         new_spray_file = spray_file.replace('CUGN_', 'CUGN_potential_')
         ds.to_netcdf(new_spray_file)

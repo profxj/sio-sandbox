@@ -137,18 +137,17 @@ def fill_in_grid(grid, ds):
     grid['z'] = ds.depth[grid.depth.values].values
 
     # Physical quantities
-    grid['CT'] = ds.CT.data[(grid.depth.values, 
-                               grid.profile.values)]
-    grid['SA'] = ds.SA.data[(grid.depth.values, 
-                               grid.profile.values)]
-    grid['sigma0'] = ds.sigma0.data[(grid.depth.values, 
-                               grid.profile.values)]
-    grid['SO'] = ds.SO.data[(grid.depth.values, 
-                               grid.profile.values)]
+    grid['CT'] = ds.CT.data[(grid.depth.values, grid.profile.values)]
+    grid['SA'] = ds.SA.data[(grid.depth.values, grid.profile.values)]
+    grid['sigma0'] = ds.sigma0.data[(grid.depth.values, grid.profile.values)]
+    grid['SO'] = ds.SO.data[(grid.depth.values, grid.profile.values)]
+    # Buyoancy                            
+    grid['N'] = ds.N.data[(grid.depth.values, grid.profile.values)]
+
 
     # Others                            
-    grid['chla'] = ds.chlorophyll_a.data[(grid.depth.values, 
-                               grid.profile.values)]
+    grid['chla'] = ds.chlorophyll_a.data[(grid.depth.values, grid.profile.values)]
+
 
 
 
@@ -195,6 +194,8 @@ def grab_control_values(outliers:pandas.DataFrame,
         # 
         final_vals = []
         for ss in range(len(all_vals)):
+            if all_Ni[ss] == 0:
+                continue
             Ndup = int(np.round(totN * all_No[ss]/Nout / all_Ni[ss]))
             for kk in range(Ndup):
                 final_vals += all_vals[ss]
