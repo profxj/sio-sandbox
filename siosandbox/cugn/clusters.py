@@ -13,6 +13,18 @@ from IPython import embed
 def generate_clusters(line:str, perc:float,
                       time_scl:float=3.,
                       z_scl:float=5.):
+    """ Generate clusters of outliers for a given line
+    and percentage
+
+    Args:
+        line (str): Line
+        perc (float): percentile for outliers
+        time_scl (float, optional): _description_. Defaults to 3..
+        z_scl (float, optional): _description_. Defaults to 5..
+
+    Returns:
+        pandas.DataFrame: table of outliers labeled by cluster
+    """
 
     # Grab table of outliers
     grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, perc)

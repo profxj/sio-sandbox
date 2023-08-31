@@ -123,27 +123,33 @@ def gen_outliers(line:str, pcut:float):
 
     grid_outliers = grid_tbl[outliers].copy()
 
-    # Decorate items
-    grid_outliers['time'] = pandas.to_datetime(ds.time[grid_outliers.profile.values].values)
-    grid_outliers['lon'] = ds.lon[grid_outliers.profile.values].values
-    grid_outliers['z'] = ds.depth[grid_outliers.depth.values].values
-
-    # Physical quantities
-    grid_outliers['CT'] = ds.CT.data[(grid_outliers.depth.values, 
-                               grid_outliers.profile.values)]
-    grid_outliers['SA'] = ds.SA.data[(grid_outliers.depth.values, 
-                               grid_outliers.profile.values)]
-    grid_outliers['sigma0'] = ds.sigma0.data[(grid_outliers.depth.values, 
-                               grid_outliers.profile.values)]
-    grid_outliers['SO'] = ds.SO.data[(grid_outliers.depth.values, 
-                               grid_outliers.profile.values)]
-
-    # Others                            
-    grid_outliers['chla'] = ds.chlorophyll_a.data[(grid_outliers.depth.values, 
-                               grid_outliers.profile.values)]
+    # Fill in grid
+    fill_in_grid(grid_outliers, ds)
 
     # Return
     return grid_outliers, grid_tbl, ds
+
+def fill_in_grid(grid, ds):
+
+    # Decorate items
+    grid['time'] = pandas.to_datetime(ds.time[grid.profile.values].values)
+    grid['lon'] = ds.lon[grid.profile.values].values
+    grid['z'] = ds.depth[grid.depth.values].values
+
+    # Physical quantities
+    grid['CT'] = ds.CT.data[(grid.depth.values, 
+                               grid.profile.values)]
+    grid['SA'] = ds.SA.data[(grid.depth.values, 
+                               grid.profile.values)]
+    grid['sigma0'] = ds.sigma0.data[(grid.depth.values, 
+                               grid.profile.values)]
+    grid['SO'] = ds.SO.data[(grid.depth.values, 
+                               grid.profile.values)]
+
+    # Others                            
+    grid['chla'] = ds.chlorophyll_a.data[(grid.depth.values, 
+                               grid.profile.values)]
+
 
 def old_find_outliers(values:np.ndarray, 
                   grid_indices:np.ndarray,
