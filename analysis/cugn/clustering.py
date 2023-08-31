@@ -181,8 +181,10 @@ def main(flg):
     # Montage
     if flg & (2**2):
         line = '90'
-        outl_dict = dict(perc=98., year=2017, lons=[-118., -100.],
-                        z=[0., 50.], months=[6,8])
+        #outl_dict = dict(perc=98., year=2017, lons=[-118., -100.],
+        #                z=[0., 50.], months=[6,8])
+        outl_dict = dict(perc=98., year=2017, lons=[-119., -100.],
+                        z=[0., 100.], months=[2,4])
         outlier_montage(line, outl_dict, 'Figures/tst.png')
 
 # Command line execution
