@@ -16,13 +16,23 @@ import pandas
 
 from siosandbox.cugn import grid_utils
 from siosandbox.cugn import figures
-from siosandbox.cugn import space_time
+from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
 
 from IPython import embed
 
 def build_grid(line_file:str, gridtbl_outfile:str, edges_outfile:str,
                min_counts:int=50):
+    """ Grid up density and salinity for a line
+    to generate a table of grid indices and values
+
+    Args:
+        line_file (str): Identify the line ['90', '67']
+        gridtbl_outfile (str): name of the output table
+        edges_outfile (str): name of the output grid edges
+        min_counts (int, optional): Minimum counts on the
+            grid to be included in the analysis. Defaults to 50.
+    """
     # Dataset
     ds = xarray.load_dataset(line_file)
 
@@ -71,7 +81,7 @@ def year_outliers(line:str, year:int=2017, pcut:float=95., show_depth:bool=False
     grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, pcut)
 
     # Time conveniences
-    ptimes = pandas.to_datetime(grid_outliers.times.values)
+    ptimes = pandas.to_datetime(grid_outliers.time.values)
     months = ptimes.month
 
     # Plot a year
@@ -96,7 +106,7 @@ def outlier_montage(line:str, outl_dict:dict, outfile:str):
     grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, outl_dict['perc'])
 
     # Time conveniences
-    ptimes = pandas.to_datetime(grid_outliers.times.values)
+    ptimes = pandas.to_datetime(grid_outliers.time.values)
     months = ptimes.month
 
     # Cut
@@ -157,6 +167,15 @@ def outlier_montage(line:str, outl_dict:dict, outfile:str):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
     
+def cluster_stats(line:str, perc:float):
+
+    # Load clusters of outliers
+    grid_outliers = clusters.generate_clusters(line, perc)
+
+    # Cluster stats
+    cluster_stats = clusters.cluster_stats(grid_outliers)
+    embed(header='cluster_stats')
+
 
 def main(flg):
     if flg== 'all':
@@ -187,6 +206,10 @@ def main(flg):
                         z=[0., 100.], months=[2,4])
         outlier_montage(line, outl_dict, 'Figures/tst.png')
 
+    # Montage
+    if flg & (2**3):
+        cluster_stats('90', perc=98.)
+
 # Command line execution
 if __name__ == '__main__':
     import sys
@@ -195,7 +218,8 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- Build grids
         #flg += 2 ** 1  # 2 -- Year plot
-        #flg += 2 ** 1  # 4 -- Montage
+        #flg += 2 ** 2  # 4 -- Montage
+        #flg += 2 ** 3  # 8 -- Generate clusters
     else:
         flg = sys.argv[1]
 
