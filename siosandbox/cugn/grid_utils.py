@@ -151,6 +151,128 @@ def fill_in_grid(grid, ds):
                                grid.profile.values)]
 
 
+
+def grab_control_values(outliers:pandas.DataFrame,
+                        grid_tbl:pandas.DataFrame,
+                        metric:str, normalize:bool=True):
+    """ Grab the values of a given metric for the control
+
+    Args:
+        outliers (pandas.DataFrame): Table of outliers of interest
+        grid_tbl (pandas.DataFrame): _description_
+        metric (str): _description_
+
+    Returns:
+        np.array: Control values for the outliers presented
+    """
+
+    comb_row_col = np.array([col*10000 + row for row,col in zip(outliers.row.values, 
+                                                                outliers.col.values)])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_vals = []
+    all_Ni = []  # Number of values in the main table
+    all_No = []
+    for row, col in zip(uni_row, uni_col):
+        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+        # Count
+        Ni = np.sum(in_cell)
+        all_Ni.append(Ni)
+        all_No.append(np.sum((outliers.row == row) & (outliers.col == col)))
+        # Grab em
+        vals = grid_tbl[metric].values[in_cell]
+        if not normalize:
+            all_vals += vals.tolist()
+        else:
+            all_vals.append(vals.tolist())
+
+    # Normalize?
+    if normalize:
+        Nout = np.sum(all_No)
+        totN = 100*np.sum(all_Ni)  # The 100 is arbitrary
+        # 
+        final_vals = []
+        for ss in range(len(all_vals)):
+            Ndup = int(np.round(totN * all_No[ss]/Nout / all_Ni[ss]))
+            for kk in range(Ndup):
+                final_vals += all_vals[ss]
+    else:
+        final_vals = all_vals
+
+    # Return
+    return final_vals
+
+def find_perc(grid_tbl:pandas.DataFrame, metric:str='doxy'):
+
+    # Find unique to loop over
+    comb_row_col = np.array([col*10000 + row for row,col in zip(grid_tbl.row.values, grid_tbl.col.values)])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_perc = np.zeros(len(grid_tbl))
+
+    for row, col in zip(uni_row, uni_col):
+        # Get indices
+        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+
+        # Values in the cell
+        vals = grid_tbl[metric].values[in_cell]
+
+        srt = np.argsort(vals)
+        in_srt = cat_utils.match_ids(np.arange(len(vals)), srt)
+        perc = np.arange(len(vals))/len(vals-1)*100.
+
+        # Save
+        all_perc[in_cell] = perc[in_srt]
+
+    # Return
+    grid_tbl[f'{metric}_p'] = all_perc
+    return 
+
+
+# ##############################
+# ##############################
+# ##############################
+
+def old_find_perc(values:np.ndarray, 
+              grid_indices:np.ndarray,
+              row_cols, cell_idx):
+
+    # Find unique to loop over
+    comb_row_col = np.array([col*10000 + row for row,col in row_cols])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_perc = np.zeros(row_cols.shape[0])
+
+    for row, col in zip(uni_row, uni_col):
+        # Get indices
+        in_cell = (grid_indices[0] == row+1) & (grid_indices[1] == col+1)
+        idx_cell = np.where(in_cell)[0]
+
+        # Values in the cell
+        vals = values[idx_cell]
+
+        srt = np.argsort(vals)
+        perc = np.arange(len(vals))/len(vals-1)*100.
+
+        # Items of interest
+        idx = (row_cols[:,0] == row) & (row_cols[:,1] == col)
+        cell_i = cell_idx[idx]
+        in_srt = cat_utils.match_ids(cell_i, srt)
+
+        # Save
+        all_perc[idx] = perc[in_srt]
+
+    # Return
+    return all_perc
+
+
+
 def old_find_outliers(values:np.ndarray, 
                   grid_indices:np.ndarray,
                   counts:np.ndarray, percentile:float,
@@ -215,83 +337,3 @@ def old_find_outliers(values:np.ndarray,
 
     # Return
     return np.array(save_outliers), np.array(save_rowcol), np.array(save_cellidx)
-
-def grab_control_values(outliers:pandas.DataFrame,
-                        grid_tbl:pandas.DataFrame,
-                        metric:str):
-
-    comb_row_col = np.array([col*10000 + row for row,col in zip(outliers.row.values, 
-                                                                outliers.col.values)])
-    uni_rc = np.unique(comb_row_col)
-    uni_col = uni_rc // 10000
-    uni_row = uni_rc - uni_col*10000
-
-    all_vals = []
-    for row, col in zip(uni_row, uni_col):
-        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
-        vals = grid_tbl[metric].values[in_cell]
-        all_vals += vals.tolist()
-    # Return
-    return all_vals
-
-def find_perc(grid_tbl:pandas.DataFrame, metric:str='doxy'):
-
-    # Find unique to loop over
-    comb_row_col = np.array([col*10000 + row for row,col in zip(grid_tbl.row.values, grid_tbl.col.values)])
-    uni_rc = np.unique(comb_row_col)
-    uni_col = uni_rc // 10000
-    uni_row = uni_rc - uni_col*10000
-
-    all_perc = np.zeros(len(grid_tbl))
-
-    for row, col in zip(uni_row, uni_col):
-        # Get indices
-        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
-
-        # Values in the cell
-        vals = grid_tbl[metric].values[in_cell]
-
-        srt = np.argsort(vals)
-        in_srt = cat_utils.match_ids(np.arange(len(vals)), srt)
-        perc = np.arange(len(vals))/len(vals-1)*100.
-
-        # Save
-        all_perc[in_cell] = perc[in_srt]
-
-    # Return
-    grid_tbl[f'{metric}_p'] = all_perc
-    return 
-
-def old_find_perc(values:np.ndarray, 
-              grid_indices:np.ndarray,
-              row_cols, cell_idx):
-
-    # Find unique to loop over
-    comb_row_col = np.array([col*10000 + row for row,col in row_cols])
-    uni_rc = np.unique(comb_row_col)
-    uni_col = uni_rc // 10000
-    uni_row = uni_rc - uni_col*10000
-
-    all_perc = np.zeros(row_cols.shape[0])
-
-    for row, col in zip(uni_row, uni_col):
-        # Get indices
-        in_cell = (grid_indices[0] == row+1) & (grid_indices[1] == col+1)
-        idx_cell = np.where(in_cell)[0]
-
-        # Values in the cell
-        vals = values[idx_cell]
-
-        srt = np.argsort(vals)
-        perc = np.arange(len(vals))/len(vals-1)*100.
-
-        # Items of interest
-        idx = (row_cols[:,0] == row) & (row_cols[:,1] == col)
-        cell_i = cell_idx[idx]
-        in_srt = cat_utils.match_ids(cell_i, srt)
-
-        # Save
-        all_perc[idx] = perc[in_srt]
-
-    # Return
-    return all_perc

@@ -10,24 +10,20 @@ from siosandbox.cugn import grid_utils
 
 from IPython import embed
 
-def generate_clusters(line:str, perc:float,
+def generate_clusters(grid_outliers:pandas.DataFrame,
                       time_scl:float=3.,
                       z_scl:float=5.):
     """ Generate clusters of outliers for a given line
     and percentage
 
     Args:
-        line (str): Line
-        perc (float): percentile for outliers
+        grid_outliers (pandas.DataFrame): table of outliers
         time_scl (float, optional): _description_. Defaults to 3..
         z_scl (float, optional): _description_. Defaults to 5..
 
     Returns:
         pandas.DataFrame: table of outliers labeled by cluster
     """
-
-    # Grab table of outliers
-    grid_outliers, grid_tbl, ds = grid_utils.gen_outliers(line, perc)
 
     # ###########
     # Time
@@ -59,10 +55,6 @@ def generate_clusters(line:str, perc:float,
 
     grid_outliers['cluster'] = dbscan.labels_
 
-    # Save?
-
-    # Return
-    return grid_outliers
 
 def cluster_stats(grid_outliers:pandas.DataFrame):
 
