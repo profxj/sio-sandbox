@@ -72,6 +72,7 @@ def add_gsw():
         # Buoyancy
         dsigmadz, _ = np.gradient(ds.sigma0.data, 
                                   float(ds.depth[1]-ds.depth[0]))
+        dsigmadz[dsigmadz < 0.] = 0.
         buoyfreq = np.sqrt(9.8/1025*dsigmadz)/(2*np.pi)*3600
         ds['N'] = (('depth', 'profile'), buoyfreq)
         ds.N.attrs = dict(long_name='Buoyancy Frequency', units='cycles/hour')
