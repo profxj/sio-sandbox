@@ -18,6 +18,7 @@ from siosandbox.cugn import grid_utils
 from siosandbox.cugn import figures
 from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
+from siosandbox import plot_utils
 
 from IPython import embed
 
@@ -40,7 +41,10 @@ def fig_pdf_cdf(outfile:str, line, SO_cut:float=1.1):
     plt.clf()
     gs = gridspec.GridSpec(2,2)
 
-    for ss, metric in enumerate(['N', 'z', 'chla', 'T']):
+    axes = []
+    metrics = ['N', 'z', 'chla', 'T']
+    labels = ['N (cycles/hour)', 'z (m)', 'Chl-a', 'T (deg C)']
+    for ss, metric, label in zip(np.arange(len(metrics)), metrics, labels):
         # Build control
         control = grid_utils.grab_control_values(
             highSO_tbl, grid_tbl, metric)
@@ -50,11 +54,65 @@ def fig_pdf_cdf(outfile:str, line, SO_cut:float=1.1):
         # Plot
         ax = plt.subplot(gs[ss])
 
-        sns.ecdfplot(x=highSO_tbl[metric], ax=ax, label=f'SO > {SO_cut}')
-        sns.ecdfplot(x=control, ax=ax, label='Control', color='red')
+        if metric in ['chla']:
+            log_scale = (True, False)
+        else:
+            log_scale = (False, False)
+
+        sns.ecdfplot(x=highSO_tbl[metric], ax=ax, label=f'SO > {SO_cut}', log_scale=log_scale)
+        sns.ecdfplot(x=control, ax=ax, label='Control', color='k', log_scale=log_scale)
 
         if ss == 0:
-            ax.legend()
+            ax.legend(fontsize=15.)
+
+        # Label
+        ax.set_xlabel(label)
+        ax.set_ylabel('CDF')
+
+        axes.append(ax)
+
+    # Pretty up
+    for ax in axes:
+        plot_utils.set_fontsize(ax, 17)
+
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+def fig_varySO_pdf_cdf(outfile:str, line):
+    # Load
+    items = cugn_io.load_line(line)
+    grid_tbl = items['grid_tbl']
+    ds = items['ds']
+
+    # Fill
+    grid_utils.fill_in_grid(grid_tbl, ds)
+
+    # Figure
+    fig = plt.figure(figsize=(12,12))
+    plt.clf()
+    ax = plt.gca()
+
+    metric = 'N'
+    for SO_cut in [1., 1.05, 1.1, 1.2, 1.3]:
+        highSO = grid_tbl.SO > SO_cut
+        highSO_tbl = grid_tbl[highSO]
+
+        if SO_cut == 1.:
+            label = 'Control'
+            control = grid_utils.grab_control_values(
+                highSO_tbl, grid_tbl, metric)
+            control = control[np.isfinite(control)]
+            sns.ecdfplot(x=control, ax=ax, label='Control', color='k')
+
+        sns.ecdfplot(x=highSO_tbl[metric], ax=ax, label=f'SO > {SO_cut}')
+
+
+    # Finish
+    ax.legend(fontsize=15.)
+    plot_utils.set_fontsize(ax, 17)
+
+    ax.set_xlabel('N (cycles/hour)')
+    ax.set_ylabel('CDF')
 
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
@@ -69,7 +127,13 @@ def main(flg):
     # PDF CDFs
     if flg & (2**0):
         line = '90'
-        fig_pdf_cdf(f'fig_pdf_cdf_{line}.png', line)
+        #fig_pdf_cdf(f'fig_pdf_cdf_{line}.png', line)
+        fig_pdf_cdf(f'fig_pdf_cdf_{line}_105.png', line, SO_cut=1.05)
+
+    # PDF CDF vary SO_cut
+    if flg & (2**1):
+        line = '90'
+        fig_varySO_pdf_cdf(f'fig_varySO_pdf_cdf_{line}.png', line)
 
 # Command line execution
 if __name__ == '__main__':
