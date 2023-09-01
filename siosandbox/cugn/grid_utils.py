@@ -147,11 +147,54 @@ def fill_in_grid(grid, ds):
 
     # Others                            
     grid['chla'] = ds.chlorophyll_a.data[(grid.depth.values, grid.profile.values)]
-
-
+    grid['T'] = ds.temperature.data[(grid.depth.values, grid.profile.values)]
 
 
 def grab_control_values(outliers:pandas.DataFrame,
+                        grid_tbl:pandas.DataFrame,
+                        metric:str, 
+                        boost:int=10):
+    """ Grab the values of a given metric for the control
+
+    Args:
+        outliers (pandas.DataFrame): Table of outliers of interest
+        grid_tbl (pandas.DataFrame): Full table of values
+        metric (str): stat to generate control values for
+
+    Returns:
+        np.array: Control values for the outliers presented
+    """
+
+    comb_row_col = np.array([col*10000 + row for row,col in zip(outliers.row.values, 
+                                                                outliers.col.values)])
+    uni_rc = np.unique(comb_row_col)
+    uni_col = uni_rc // 10000
+    uni_row = uni_rc - uni_col*10000
+
+    all_vals = []
+    for row, col in zip(uni_row, uni_col):
+        in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+
+        # Count
+        Ncell = np.sum(in_cell)
+        No = np.sum((outliers.row == row) & (outliers.col == col))
+        Ngrab = boost * No
+
+        # Random with repeats
+        ridx = np.random.choice(np.arange(Ncell), size=Ngrab)
+        idx = np.where(in_cell)[0][ridx]
+
+        # Grab em
+        vals = grid_tbl[metric].values[idx]
+
+        # Save
+        all_vals += vals.tolist()
+
+    # Return
+    return np.array(all_vals)
+
+
+def old_grab_control_values(outliers:pandas.DataFrame,
                         grid_tbl:pandas.DataFrame,
                         metric:str, normalize:bool=True):
     """ Grab the values of a given metric for the control
@@ -176,6 +219,7 @@ def grab_control_values(outliers:pandas.DataFrame,
     all_No = []
     for row, col in zip(uni_row, uni_col):
         in_cell = (grid_tbl.row == row) & (grid_tbl.col == col)
+
         # Count
         Ni = np.sum(in_cell)
         all_Ni.append(Ni)
