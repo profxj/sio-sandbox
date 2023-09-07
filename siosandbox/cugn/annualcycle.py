@@ -1,6 +1,12 @@
 """ Methods related to the Annual Cycle """
+import os
 
 import numpy as np
+from scipy.io import loadmat
+
+import pandas
+
+from siosandbox.cugn import utils as cugn_utils
 
 from IPython import embed
 
@@ -82,3 +88,29 @@ def evaluate(Aarray:np.ndarray, variable:str, level:int, time:np.ndarray, dist:n
 
 
     return evals
+
+def calc_for_grid(grid:pandas.DataFrame, line:str, variable:str):
+
+    # Load up
+    anncyc_file = os.path.join(os.getenv('CUGN'), f'anncyc{line}.mat')
+    A = loadmat(anncyc_file, variable_names=['A'])['A']
+
+    # Distance
+    dist, offset = cugn_utils.calc_dist_offset(line, grid.lon.values, grid.lat.values)
+
+    # Times
+    unix_time = (grid.time - pandas.Timestamp("1970-01-01")) / pandas.Timedelta('1s')
+
+    # Evaluate
+    uni_depth = np.unique(grid.depth.values)
+    T_Annual = np.zeros(unix_time.size)
+
+    # Loop on depth
+    for level in uni_depth:
+        in_depth = grid.depth == level
+        # 
+        T_Annual[in_depth] = evaluate(A, variable, level, 
+                                      unix_time[in_depth], dist[in_depth])
+
+    # Return
+    return T_Annual
