@@ -2,17 +2,36 @@
 
 import numpy as np
 
+from IPython import embed
+
 def prep_m(Avar:np.ndarray, level:int, ip:int, nvals:int):
     maxharmonic = Avar['sin'].shape[2]
 
     m = np.zeros((nvals, 1 + 2*maxharmonic))
-    m[:,0] = Avar['constant'][level, ip:ip+nvals]
-    m[:,1:1+maxharmonic] = Avar['sin'][level, ip:ip+nvals]
-    m[:,1+maxharmonic:] = Avar['cos'][level, ip:ip+nvals] 
+    if nvals > 1:
+        m[:,0] = Avar['constant'][level, ip:ip+nvals]
+        m[:,1:1+maxharmonic] = Avar['sin'][level, ip:ip+nvals]
+        m[:,1+maxharmonic:] = Avar['cos'][level, ip:ip+nvals] 
+    else:
+        m[:,0] = Avar['constant'][level, ip]
+        m[:,1:1+maxharmonic] = Avar['sin'][level, ip]
+        m[:,1+maxharmonic:] = Avar['cos'][level, ip] 
 
     return m
 
 def evaluate(Aarray:np.ndarray, variable:str, level:int, time:np.ndarray, dist:np.ndarray):
+    """ Evaluate the annual cycle
+
+    Args:
+        Aarray (np.ndarray): _description_
+        variable (str): _description_
+        level (int): _description_
+        time (np.ndarray): Unix time, i.e. seconds since 1970-01-01
+        dist (np.ndarray): Distance from the shore in km
+
+    Returns:
+        np.ndarray: evals
+    """
 
     evals = np.zeros(time.size)
     
@@ -36,13 +55,15 @@ def evaluate(Aarray:np.ndarray, variable:str, level:int, time:np.ndarray, dist:n
     # Beyond the grid
     ii = dist <= np.min(A['xcenter'])
     if np.any(ii):
+        idx = np.where(ii)[0]
         m = prep_m(A[variable], level, 0, 1)
-        evals[ii] = G[ii,:] @ m
+        evals[idx] = (G[idx,:] @ m.T).flatten()
 
     jj = dist >= np.max(A['xcenter'])
     if np.any(jj):
+        idx = np.where(jj)[0]
         m = prep_m(A[variable], level, -1, 1)
-        evals[jj] = G[jj,:] @ m
+        evals[idx] = (G[idx,:] @ m.T).flatten()
 
     # Within the grid
     dx = np.diff(A['xcenter'])

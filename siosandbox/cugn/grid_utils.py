@@ -134,6 +134,7 @@ def fill_in_grid(grid, ds):
     # Decorate items
     grid['time'] = pandas.to_datetime(ds.time[grid.profile.values].values)
     grid['lon'] = ds.lon[grid.profile.values].values
+    grid['lat'] = ds.lat[grid.profile.values].values
     grid['z'] = ds.depth[grid.depth.values].values
 
     # Physical quantities
@@ -250,6 +251,12 @@ def old_grab_control_values(outliers:pandas.DataFrame,
     return final_vals
 
 def find_perc(grid_tbl:pandas.DataFrame, metric:str='doxy'):
+    """ Find the percentile of the values in each cell
+
+    Args:
+        grid_tbl (pandas.DataFrame): _description_
+        metric (str, optional): _description_. Defaults to 'doxy'.
+    """
 
     # Find unique to loop over
     comb_row_col = np.array([col*10000 + row for row,col in zip(grid_tbl.row.values, grid_tbl.col.values)])
