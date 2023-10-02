@@ -117,6 +117,54 @@ def fig_varySO_pdf_cdf(outfile:str, line):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
+
+def fig_timeseries(outfile:str, line):
+
+    # Load
+    items = cugn_io.load_line(line)
+    grid_tbl = items['grid_tbl']
+    ds = items['ds']
+
+    # Fill
+    grid_utils.fill_in_grid(grid_tbl, ds)
+
+    # Cluters 
+    perc = 80.  # Low enough to grab them all
+    grid_outliers, _, _ = grid_utils.gen_outliers(line, perc)
+
+    extrem = grid_outliers.SO > 1.1
+    grid_extrem = grid_outliers[extrem].copy()
+    times = pandas.to_datetime(grid_extrem.time.values)
+
+    # Cluster me
+    clusters.generate_clusters(grid_extrem)
+    cluster_stats = clusters.cluster_stats(grid_extrem)
+
+
+    # Figure
+    fig = plt.figure(figsize=(12,12))
+    plt.clf()
+    ax = plt.gca()
+
+    # Start with 2019
+    year = 2020
+    in_year = times.year == year
+    grid_year = grid_extrem[in_year]
+
+
+    # Finish
+    ax.legend(fontsize=15.)
+    plot_utils.set_fontsize(ax, 17)
+
+    #ax.scatter(grid_year.lon, grid_year.time)
+    ax.scatter(grid_extrem.lon, grid_extrem.time)
+
+    ax.set_xlabel('lon')
+    ax.set_ylabel('date')
+
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
 def main(flg):
     if flg== 'all':
         flg= np.sum(np.array([2 ** ii for ii in range(25)]))
@@ -135,6 +183,12 @@ def main(flg):
         line = '90'
         fig_varySO_pdf_cdf(f'fig_varySO_pdf_cdf_{line}.png', line)
 
+    # Time-series
+    if flg & (2**2):
+        line = '90'
+        fig_timeseries(f'fig_varySO_pdf_cdf_{line}.png', line)
+
+
 # Command line execution
 if __name__ == '__main__':
     import sys
@@ -142,6 +196,8 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         flg = 0
         #flg += 2 ** 0  # 1 -- PDF CDF
+        #flg += 2 ** 1  # 2 -- Vary SO cut
+        #flg += 2 ** 2  # 4 -- time-series of outliers
     else:
         flg = sys.argv[1]
 
