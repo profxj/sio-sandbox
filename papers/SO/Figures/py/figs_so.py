@@ -142,6 +142,7 @@ def fig_timeseries(outfile:str, line):
 
 
     # Figure
+    # https://stackoverflow.com/questions/57292022/day-of-year-format-x-axis-matplotlib
     fig = plt.figure(figsize=(12,12))
     plt.clf()
     ax = plt.gca()
@@ -157,10 +158,13 @@ def fig_timeseries(outfile:str, line):
     plot_utils.set_fontsize(ax, 17)
 
     #ax.scatter(grid_year.lon, grid_year.time)
-    ax.scatter(grid_extrem.lon, grid_extrem.time)
+    ax.scatter(grid_extrem.lon, grid_extrem.time,
+               c=grid_extrem.SO, cmap='jet')
 
     ax.set_xlabel('lon')
     ax.set_ylabel('date')
+
+    ax.set_xlim(-123., -117.)
 
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
