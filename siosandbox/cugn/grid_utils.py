@@ -153,7 +153,7 @@ def fill_in_grid(grid, ds):
 
 def grab_control_values(outliers:pandas.DataFrame,
                         grid_tbl:pandas.DataFrame,
-                        metric:str, 
+                        metric:str,
                         boost:int=10):
     """ Grab the values of a given metric for the control
 

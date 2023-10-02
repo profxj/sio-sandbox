@@ -56,7 +56,7 @@ def load_up(line):
     clusters.generate_clusters(grid_extrem)
     cluster_stats = clusters.cluster_stats(grid_extrem)
 
-    return grid_extrem, ds, times
+    return grid_extrem, ds, times, grid_tbl
 
 def fig_pdf_cdf(outfile:str, line, SO_cut:float=1.1):
 
@@ -209,6 +209,9 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     grid_extrem = items[0]
     ds = items[1]
     times = items[2]
+    grid_tbl = items[3]
+
+
 
     tevent = pandas.Timestamp(event)
     imin = np.argmin(np.abs(times-tevent))
@@ -229,6 +232,7 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     fig = plt.figure(figsize=(12,12))
     gs = gridspec.GridSpec(2,2)
 
+    # #########################################################3
     # DO
     ax_DO = plt.subplot(gs[0])
     # Contours from SO
@@ -241,6 +245,7 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     cax,kw = mpl.colorbar.make_axes([ax_DO])
     cbaxes = plt.colorbar(im, cax=cax, **kw)
 
+    # #########################################################3
     # SO contour
     SOs = ds.SO.data[0:max_depth, p_min:p_max]
     Np = p_max-p_min
@@ -251,11 +256,27 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     ax_DO.contour(X, Y, SOs, levels=[1., 1.1, 1.2],
                colors=['white', 'gray', 'black'], linewidths=1.5)
 
+    # #########################################################3
     # N
     ax_N = plt.subplot(gs[1])
     im_N = ax_N.imshow(ds.N.data[0:max_depth, p_min:p_max],
         extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
                    cmap='Blues', aspect='auto')
+
+    # N percentile
+    grid_utils.find_perc(grid_tbl, 'N')
+    Np_grid = np.zeros_like(ds.N.data)
+
+    in_view = (grid_tbl.profile >= p_min) & (grid_tbl.profile <= p_max) & (
+        grid_tbl.depth < max_depth)
+    # Painful loop, but do it
+    #embed(header='214 of figs_so')
+    for _, row in grid_tbl[in_view].iterrows():
+        Np_grid[row.depth, row.profile] = row.N_p
+    ax_DO.contour(X, Y, Np_grid, levels=[90., 95.],
+               colors=['gray', 'black'], linewidths=1.5)
+    
+
     cax,kw = mpl.colorbar.make_axes([ax_N])
     cbaxes = plt.colorbar(im_N, cax=cax, **kw)
 
