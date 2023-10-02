@@ -20,6 +20,17 @@ def line_endpoints(line:str):
     return lonendpts, latendpts
 
 def calc_dist_offset(line:str, lons:np.ndarray, lats:np.ndarray):
+    """ Calculate the distnace from shore and offset from a line
+      for a given line 
+
+    Args:
+        line (str): line name
+        lons (np.ndarray): longitudes
+        lats (np.ndarray): latitudes
+
+    Returns:
+        tuple: dist, offset
+    """
 
     # Endpoints
     lonendpts, latendpts = line_endpoints(line)
@@ -50,4 +61,4 @@ def calc_dist_offset(line:str, lons:np.ndarray, lats:np.ndarray):
     offset=np.imag(zhat)
 
     # Return
-    return dist, offset 
+    return dist, offset

@@ -9,18 +9,54 @@ from scipy import stats
 from matplotlib import pyplot as plt
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
+import matplotlib.dates as mdates
+mpl.rcParams['font.family'] = 'stixgeneral'
+
 
 import seaborn as sns
 
 import pandas
 
 from siosandbox.cugn import grid_utils
+from siosandbox.cugn import utils as cugn_utils
 from siosandbox.cugn import figures
 from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
 from siosandbox import plot_utils
 
 from IPython import embed
+
+def load_up(line):
+    # Load
+    items = cugn_io.load_line(line)
+    grid_tbl = items['grid_tbl']
+    ds = items['ds']
+
+    # Fill
+    grid_utils.fill_in_grid(grid_tbl, ds)
+
+    # Cluters 
+    perc = 80.  # Low enough to grab them all
+    grid_outliers, _, _ = grid_utils.gen_outliers(line, perc)
+
+    extrem = grid_outliers.SO > 1.1
+    grid_extrem = grid_outliers[extrem].copy()
+    times = pandas.to_datetime(grid_extrem.time.values)
+
+    # Add to df
+    grid_extrem['year'] = times.year
+    grid_extrem['doy'] = times.dayofyear
+
+    # Add distance from shore
+    dist, _ = cugn_utils.calc_dist_offset(
+        line, grid_extrem.lon.values, grid_extrem.lat.values)
+    grid_extrem['dist'] = dist
+
+    # Cluster me
+    clusters.generate_clusters(grid_extrem)
+    cluster_stats = clusters.cluster_stats(grid_extrem)
+
+    return grid_extrem, ds, times
 
 def fig_pdf_cdf(outfile:str, line, SO_cut:float=1.1):
 
@@ -118,53 +154,143 @@ def fig_varySO_pdf_cdf(outfile:str, line):
     print(f"Saved: {outfile}")
 
 
-def fig_timeseries(outfile:str, line):
+def fig_timeseries(outfile:str, line, vmax=1.3):
 
-    # Load
-    items = cugn_io.load_line(line)
-    grid_tbl = items['grid_tbl']
-    ds = items['ds']
-
-    # Fill
-    grid_utils.fill_in_grid(grid_tbl, ds)
-
-    # Cluters 
-    perc = 80.  # Low enough to grab them all
-    grid_outliers, _, _ = grid_utils.gen_outliers(line, perc)
-
-    extrem = grid_outliers.SO > 1.1
-    grid_extrem = grid_outliers[extrem].copy()
-    times = pandas.to_datetime(grid_extrem.time.values)
-
-    # Cluster me
-    clusters.generate_clusters(grid_extrem)
-    cluster_stats = clusters.cluster_stats(grid_extrem)
-
+    # Do it
+    items = load_up(line)
+    grid_extrem = items[0]
 
     # Figure
     # https://stackoverflow.com/questions/57292022/day-of-year-format-x-axis-matplotlib
     fig = plt.figure(figsize=(12,12))
-    plt.clf()
-    ax = plt.gca()
+    _, axs = plt.subplots(1,3,sharey=True,gridspec_kw = {'wspace':0, 'hspace':0})
 
-    # Start with 2019
-    year = 2020
-    in_year = times.year == year
-    grid_year = grid_extrem[in_year]
+
+    # Loop in the years
+    for ss, year in enumerate([2018, 2019, 2020]):
+        in_year = grid_extrem.year == year
+        grid_year = grid_extrem[in_year]
+
+        ax = axs[ss]
+        sc = ax.scatter(grid_year.dist, grid_year.doy,
+                c=grid_year.SO, cmap='jet', s=1, vmin=1.1,
+                vmax=vmax)
+
+        if ss == 1:
+            ax.set_xlabel('Distance from shore (km)')
+        if ss == 0:
+            #ax.set_ylabel('Date')
+            ax.set_ylim(0., 366.)
+            major_format = mdates.DateFormatter('%b')
+            ax.yaxis.set_major_formatter(major_format)
+
+        fsz = 13.
+        ax.text(0.95, 0.9, f'{year}',
+                transform=ax.transAxes,
+                fontsize=fsz, ha='right', color='k')
+        ax.set_xlim(-20., 399.)
+
+        # Finish
+        plot_utils.set_fontsize(ax, 13)
+
+    cax,kw = mpl.colorbar.make_axes([ax for ax in axs.flat])
+    cbaxes = plt.colorbar(sc, cax=cax, **kw)
+    cbaxes.set_label('Saturated Oxygen', fontsize=13.)
+    cbaxes.ax.tick_params(labelsize=13)
+
+
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+def fig_event(outfile:str, line:str, event:str, p_off:int=15,
+    max_depth=10):
+
+    items = load_up(line)
+    grid_extrem = items[0]
+    ds = items[1]
+    times = items[2]
+
+    tevent = pandas.Timestamp(event)
+    imin = np.argmin(np.abs(times-tevent))
+    cidx = grid_extrem.iloc[imin].cluster
+
+    # Range of dates
+    in_cluster = grid_extrem.cluster == cidx
+
+    p_min = grid_extrem.profile[in_cluster].min() - p_off
+    p_max = grid_extrem.profile[in_cluster].max() + p_off
+
+    # DOY
+    otimes = pandas.to_datetime(ds.time.data)
+    x_lims = mdates.date2num([otimes[p_min], otimes[p_max]])
+
+
+    # Figure
+    fig = plt.figure(figsize=(12,12))
+    gs = gridspec.GridSpec(2,2)
+
+    # DO
+    ax_DO = plt.subplot(gs[0])
+    # Contours from SO
+    im = ax_DO.imshow(ds.doxy.data[0:max_depth, p_min:p_max],
+        extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
+                   cmap='Purples', vmin=200., aspect='auto')
+    #im = ax.imshow(ds.SO.data[0:max_depth, p_min:p_max],
+    #    extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
+    #               cmap='jet', vmin=0.9, aspect='auto')
+    cax,kw = mpl.colorbar.make_axes([ax_DO])
+    cbaxes = plt.colorbar(im, cax=cax, **kw)
+
+    # SO contour
+    SOs = ds.SO.data[0:max_depth, p_min:p_max]
+    Np = p_max-p_min
+    X = np.outer(np.ones(max_depth), 
+        np.linspace(x_lims[0], x_lims[1], Np))
+    Y = np.outer(np.linspace(0., max_depth*10., max_depth), 
+                 np.ones(Np))
+    ax_DO.contour(X, Y, SOs, levels=[1., 1.1, 1.2],
+               colors=['white', 'gray', 'black'], linewidths=1.5)
+
+    # N
+    ax_N = plt.subplot(gs[1])
+    im_N = ax_N.imshow(ds.N.data[0:max_depth, p_min:p_max],
+        extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
+                   cmap='Blues', aspect='auto')
+    cax,kw = mpl.colorbar.make_axes([ax_N])
+    cbaxes = plt.colorbar(im_N, cax=cax, **kw)
+
+    # T
+    ax_T = plt.subplot(gs[2])
+    im_T = ax_T.imshow(ds.temperature.data[0:max_depth, p_min:p_max],
+        extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
+                   cmap='jet', aspect='auto')
+    cax,kw = mpl.colorbar.make_axes([ax_T])
+    cbaxes = plt.colorbar(im_T, cax=cax, **kw)
+
+    # T
+    ax_C = plt.subplot(gs[3])
+    im_C = ax_C.imshow(ds.chlorophyll_a.data[0:max_depth, p_min:p_max],
+        extent=[x_lims[0], x_lims[1], max_depth*10, 0.],
+                   cmap='Greens', aspect='auto')
+    cax,kw = mpl.colorbar.make_axes([ax_C])
+    cbaxes = plt.colorbar(im_C, cax=cax, **kw)
 
 
     # Finish
-    ax.legend(fontsize=15.)
-    plot_utils.set_fontsize(ax, 17)
+    for ss in range(4):
+        ax = plt.subplot(gs[ss])
+        #
+        ax.set_ylabel('Depth (m)')
+        ax.set_xlabel('Date')
+        # Axes
+        ax.xaxis_date()
+        #major_format = mdates.DateFormatter('%b')
+        #ax.xaxis.set_major_formatter(major_format)
+        ax.xaxis.set_major_locator(mdates.DayLocator(interval=3))
 
-    #ax.scatter(grid_year.lon, grid_year.time)
-    ax.scatter(grid_extrem.lon, grid_extrem.time,
-               c=grid_extrem.SO, cmap='jet')
-
-    ax.set_xlabel('lon')
-    ax.set_ylabel('date')
-
-    ax.set_xlim(-123., -117.)
+        ax.tick_params(axis='x', rotation=10)
+        #ax.autofmt_xdate()
+        plot_utils.set_fontsize(ax, 14)
 
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
@@ -190,8 +316,14 @@ def main(flg):
     # Time-series
     if flg & (2**2):
         line = '90'
-        fig_timeseries(f'fig_varySO_pdf_cdf_{line}.png', line)
+        fig_timeseries(f'fig_timeseries_{line}.png', line)
 
+    # Time-series
+    if flg & (2**3):
+        line = '90'
+        #event = '2020-09-01' # Sub-surface
+        event = '2019-08-15'
+        fig_event(f'fig_event_{line}_{event}.png', line, event)
 
 # Command line execution
 if __name__ == '__main__':
@@ -202,6 +334,7 @@ if __name__ == '__main__':
         #flg += 2 ** 0  # 1 -- PDF CDF
         #flg += 2 ** 1  # 2 -- Vary SO cut
         #flg += 2 ** 2  # 4 -- time-series of outliers
+        #flg += 2 ** 3  # 8 -- Show individual events
     else:
         flg = sys.argv[1]
 
