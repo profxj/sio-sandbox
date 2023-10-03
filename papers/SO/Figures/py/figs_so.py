@@ -371,10 +371,10 @@ def fig_percentiles(outfile:str, line:str):
                        marginal_kws=dict(fill=False, color='black', 
                                          bins=100)) 
 
-    plt.colorbar()
+    #plt.colorbar()
     # Axes                                 
-    jg.ax_joint.set_xlabel('Buoyancy Percentile')
-    jg.ax_joint.set_ylabel('DO Percentile')
+    jg.ax_joint.set_ylabel('Buoyancy Percentile')
+    jg.ax_joint.set_xlabel('DO Percentile')
     plot_utils.set_fontsize(jg.ax_joint, 14)
     #jg.ax_joint.set_ylim(ymnx)
     
@@ -407,9 +407,13 @@ def main(flg):
     # Events
     if flg & (2**3):
         line = '90'
-        #event = '2020-09-01' # Sub-surface
-        event = '2019-08-15'
-        fig_event(f'fig_event_{line}_{event}.png', line, event)
+        eventA = ('2020-09-01', 25) # Sub-surface
+        eventB = ('2019-08-15', 30)
+        eventC = ('2019-03-02', 10)
+
+        #for event in [eventA, eventB, eventC]:
+        for event, p_off in [eventA, eventB, eventC]:
+            fig_event(f'fig_event_{line}_{event}.png', line, event, p_off=p_off)
 
     # Percentiles of DO and N
     if flg & (2**4):
