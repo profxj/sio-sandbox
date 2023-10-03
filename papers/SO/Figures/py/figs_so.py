@@ -58,6 +58,7 @@ def load_up(line):
     grid_extrem['doy'] = times.dayofyear
 
     # Add distance from shore
+
     dist, _ = cugn_utils.calc_dist_offset(
         line, grid_extrem.lon.values, grid_extrem.lat.values)
     grid_extrem['dist'] = dist
@@ -173,13 +174,16 @@ def fig_timeseries(outfile:str, line, vmax=1.3):
     # Figure
     # https://stackoverflow.com/questions/57292022/day-of-year-format-x-axis-matplotlib
     fig = plt.figure(figsize=(12,12))
-    _, axs = plt.subplots(1,3,sharey=True,gridspec_kw = {'wspace':0, 'hspace':0})
+    _, axs = plt.subplots(1,6,sharey=True,gridspec_kw = {'wspace':0, 'hspace':0})
 
 
     # Loop in the years
-    for ss, year in enumerate([2018, 2019, 2020]):
+    for ss, year in enumerate([2017, 2018, 2019, 2020, 2021, 2022]):
         in_year = grid_extrem.year == year
         grid_year = grid_extrem[in_year]
+
+        #if year == 2020:
+        #    embed(header='185 of figs_so')
 
         ax = axs[ss]
         sc = ax.scatter(grid_year.dist, grid_year.doy,
@@ -191,14 +195,23 @@ def fig_timeseries(outfile:str, line, vmax=1.3):
         if ss == 0:
             #ax.set_ylabel('Date')
             ax.set_ylim(0., 366.)
-            major_format = mdates.DateFormatter('%b')
+            major_format = mdates.DateFormatter('%b-%d')
             ax.yaxis.set_major_formatter(major_format)
+        # Title
+        if ss == 3:
+            ax.set_title(f'Line {line}', fontsize=15.)
 
         fsz = 13.
         ax.text(0.95, 0.9, f'{year}',
                 transform=ax.transAxes,
                 fontsize=fsz, ha='right', color='k')
-        ax.set_xlim(-20., 399.)
+        if line == '90':
+            ax.set_xlim(-20., 399.)
+        elif line == '80':
+            ax.set_xlim(-150., 236.)
+        elif line == '66':
+            ax.set_xlim(-10., 320.)
+        
 
         # Finish
         plot_utils.set_fontsize(ax, 13)
@@ -207,6 +220,7 @@ def fig_timeseries(outfile:str, line, vmax=1.3):
     cbaxes = plt.colorbar(sc, cax=cax, **kw)
     cbaxes.set_label('Saturated Oxygen', fontsize=13.)
     cbaxes.ax.tick_params(labelsize=13)
+
 
 
     plt.savefig(outfile, dpi=300)
@@ -401,18 +415,25 @@ def main(flg):
 
     # Time-series
     if flg & (2**2):
-        line = '90'
+        #line = '90'
+        #line = '80'
+        line = '66'
         fig_timeseries(f'fig_timeseries_{line}.png', line)
 
     # Events
     if flg & (2**3):
+        '''
         line = '90'
         eventA = ('2020-09-01', 25) # Sub-surface
         eventB = ('2019-08-15', 30)
         eventC = ('2019-03-02', 10)
+        '''
+
+        line = '80'
+        eventA = ('2021-09-15', 15) # 
 
         #for event in [eventA, eventB, eventC]:
-        for event, p_off in [eventA, eventB, eventC]:
+        for event, p_off in [eventA]:
             fig_event(f'fig_event_{line}_{event}.png', line, event, p_off=p_off)
 
     # Percentiles of DO and N

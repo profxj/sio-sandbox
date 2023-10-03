@@ -187,6 +187,8 @@ def main(flg):
     # Build Grid
     if flg & (2**0):
         line = '90'
+        line = '80'
+        line = '66'
         line_files = cugn_io.line_files(line)
 
         build_grid(line_files['datafile'],
