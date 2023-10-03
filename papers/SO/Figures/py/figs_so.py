@@ -23,6 +23,7 @@ from siosandbox.cugn import figures
 from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
 from siosandbox import plot_utils
+from siosandbox import cat_utils
 
 from IPython import embed
 
@@ -42,6 +43,15 @@ def load_up(line):
     extrem = grid_outliers.SO > 1.1
     grid_extrem = grid_outliers[extrem].copy()
     times = pandas.to_datetime(grid_extrem.time.values)
+
+    # Fill in N_p
+    grid_utils.find_perc(grid_tbl, 'N')
+    dp_gt = grid_tbl.depth*100000 + grid_tbl.profile
+    dp_ge = grid_extrem.depth*100000 + grid_extrem.profile
+    ids = cat_utils.match_ids(dp_ge, dp_gt, require_in_match=True)
+    assert len(np.unique(ids)) == len(ids)
+
+    grid_extrem['N_p'] = grid_tbl.N_p.values[ids]
 
     # Add to df
     grid_extrem['year'] = times.year
@@ -337,6 +347,40 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
+
+def fig_percentiles(outfile:str, line:str):
+
+    # Load
+    items = load_up(line)
+    grid_extrem = items[0]
+    ds = items[1]
+    times = items[2]
+    grid_tbl = items[3]
+
+    # Figure
+    fig = plt.figure(figsize=(12,12))
+    plt.clf()
+    ax = plt.gca()
+
+    #sns.histplot(data=grid_extrem, x='doxy_p', y='N_p', ax=ax)
+
+    jg = sns.jointplot(data=grid_extrem, x='doxy_p', y='N_p',
+                        kind='hex', bins='log', # gridsize=250, #xscale='log',
+                       # mincnt=1,
+                       cmap=plt.get_cmap('autumn'), 
+                       marginal_kws=dict(fill=False, color='black', 
+                                         bins=100)) 
+
+    plt.colorbar()
+    # Axes                                 
+    jg.ax_joint.set_xlabel('Buoyancy Percentile')
+    jg.ax_joint.set_ylabel('DO Percentile')
+    plot_utils.set_fontsize(jg.ax_joint, 14)
+    #jg.ax_joint.set_ylim(ymnx)
+    
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
 def main(flg):
     if flg== 'all':
         flg= np.sum(np.array([2 ** ii for ii in range(25)]))
@@ -360,12 +404,17 @@ def main(flg):
         line = '90'
         fig_timeseries(f'fig_timeseries_{line}.png', line)
 
-    # Time-series
+    # Events
     if flg & (2**3):
         line = '90'
         #event = '2020-09-01' # Sub-surface
         event = '2019-08-15'
         fig_event(f'fig_event_{line}_{event}.png', line, event)
+
+    # Percentiles of DO and N
+    if flg & (2**4):
+        line = '90'
+        fig_percentiles(f'fig_percentiles_{line}.png', line)
 
 # Command line execution
 if __name__ == '__main__':
@@ -377,6 +426,7 @@ if __name__ == '__main__':
         #flg += 2 ** 1  # 2 -- Vary SO cut
         #flg += 2 ** 2  # 4 -- time-series of outliers
         #flg += 2 ** 3  # 8 -- Show individual events
+        #flg += 2 ** 4  # 16 -- Percentiles
     else:
         flg = sys.argv[1]
 
