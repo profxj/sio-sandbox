@@ -228,8 +228,9 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     x_lims = mdates.date2num([otimes[p_min], otimes[p_max]])
 
 
+    csz = 13.
     # Figure
-    fig = plt.figure(figsize=(12,12))
+    fig = plt.figure(figsize=(12,10))
     gs = gridspec.GridSpec(2,2)
 
     # #########################################################3
@@ -244,6 +245,7 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     #               cmap='jet', vmin=0.9, aspect='auto')
     cax,kw = mpl.colorbar.make_axes([ax_DO])
     cbaxes = plt.colorbar(im, cax=cax, **kw)
+    cbaxes.set_label('Dissolved Oxygen', fontsize=csz)
 
     # #########################################################3
     # SO contour
@@ -253,8 +255,22 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
         np.linspace(x_lims[0], x_lims[1], Np))
     Y = np.outer(np.linspace(0., max_depth*10., max_depth), 
                  np.ones(Np))
+
     ax_DO.contour(X, Y, SOs, levels=[1., 1.1, 1.2],
                colors=['white', 'gray', 'black'], linewidths=1.5)
+
+    '''
+    # #########################################################3
+    # DO percentile contour
+    in_view = (grid_tbl.profile >= p_min) & (grid_tbl.profile <= p_max) & (
+        grid_tbl.depth < max_depth)
+    doxy_p_grid = np.zeros_like(ds.N.data)
+    for _, row in grid_tbl[in_view].iterrows():
+        doxy_p_grid[row.depth, row.profile] = row.doxy_p
+    ax_DO.contour(X, Y, doxy_p_grid[0:max_depth, p_min:p_max], 
+                  levels=[90., 95.],
+               colors=['white', 'black'], linewidths=1.5)
+    '''
 
     # #########################################################3
     # N
@@ -273,12 +289,15 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     #embed(header='214 of figs_so')
     for _, row in grid_tbl[in_view].iterrows():
         Np_grid[row.depth, row.profile] = row.N_p
-    ax_DO.contour(X, Y, Np_grid, levels=[90., 95.],
+
+    ax_N.contour(X, Y, Np_grid[0:max_depth, p_min:p_max], 
+                  levels=[90., 95.],
                colors=['gray', 'black'], linewidths=1.5)
     
 
     cax,kw = mpl.colorbar.make_axes([ax_N])
     cbaxes = plt.colorbar(im_N, cax=cax, **kw)
+    cbaxes.set_label('Buoyancy (cycles/hour)', fontsize=csz)
 
     # T
     ax_T = plt.subplot(gs[2])
@@ -287,6 +306,7 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
                    cmap='jet', aspect='auto')
     cax,kw = mpl.colorbar.make_axes([ax_T])
     cbaxes = plt.colorbar(im_T, cax=cax, **kw)
+    cbaxes.set_label('Temperature (deg C)', fontsize=csz)
 
     # T
     ax_C = plt.subplot(gs[3])
@@ -295,6 +315,7 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
                    cmap='Greens', aspect='auto')
     cax,kw = mpl.colorbar.make_axes([ax_C])
     cbaxes = plt.colorbar(im_C, cax=cax, **kw)
+    cbaxes.set_label('Chla', fontsize=csz)
 
 
     # Finish
