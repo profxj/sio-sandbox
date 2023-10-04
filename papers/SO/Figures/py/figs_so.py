@@ -27,6 +27,62 @@ from siosandbox import cat_utils
 
 from IPython import embed
 
+
+class SeabornFig2Grid():
+
+    def __init__(self, seaborngrid, fig,  subplot_spec):
+        self.fig = fig
+        self.sg = seaborngrid
+        self.subplot = subplot_spec
+        if isinstance(self.sg, sns.axisgrid.FacetGrid) or \
+            isinstance(self.sg, sns.axisgrid.PairGrid):
+            self._movegrid()
+        elif isinstance(self.sg, sns.axisgrid.JointGrid):
+            self._movejointgrid()
+        self._finalize()
+
+    def _movegrid(self):
+        """ Move PairGrid or Facetgrid """
+        self._resize()
+        n = self.sg.axes.shape[0]
+        m = self.sg.axes.shape[1]
+        self.subgrid = gridspec.GridSpecFromSubplotSpec(n,m, subplot_spec=self.subplot)
+        for i in range(n):
+            for j in range(m):
+                self._moveaxes(self.sg.axes[i,j], self.subgrid[i,j])
+
+    def _movejointgrid(self):
+        """ Move Jointgrid """
+        h= self.sg.ax_joint.get_position().height
+        h2= self.sg.ax_marg_x.get_position().height
+        r = int(np.round(h/h2))
+        self._resize()
+        self.subgrid = gridspec.GridSpecFromSubplotSpec(
+            r+1,r+1, subplot_spec=self.subplot)
+        #print(f'r={r}')
+
+        self._moveaxes(self.sg.ax_joint, self.subgrid[1:, :-1])
+        self._moveaxes(self.sg.ax_marg_x, self.subgrid[0, :-1])
+        self._moveaxes(self.sg.ax_marg_y, self.subgrid[1:, -1])
+
+    def _moveaxes(self, ax, gs):
+        #https://stackoverflow.com/a/46906599/4124317
+        ax.remove()
+        ax.figure=self.fig
+        self.fig.axes.append(ax)
+        self.fig.add_axes(ax)
+        ax._subplotspec = gs
+        ax.set_position(gs.get_position(self.fig))
+        ax.set_subplotspec(gs)
+
+    def _finalize(self):
+        plt.close(self.sg.fig)
+        self.fig.canvas.mpl_connect("resize_event", self._resize)
+        self.fig.canvas.draw()
+
+    def _resize(self, evt=None):
+        self.sg.fig.set_size_inches(self.fig.get_size_inches())
+
 def load_up(line):
     # Load
     items = cugn_io.load_line(line)
@@ -44,14 +100,17 @@ def load_up(line):
     grid_extrem = grid_outliers[extrem].copy()
     times = pandas.to_datetime(grid_extrem.time.values)
 
-    # Fill in N_p
+    # Fill in N_p, chla_p
     grid_utils.find_perc(grid_tbl, 'N')
+    grid_utils.find_perc(grid_tbl, 'chla')
+
     dp_gt = grid_tbl.depth*100000 + grid_tbl.profile
     dp_ge = grid_extrem.depth*100000 + grid_extrem.profile
     ids = cat_utils.match_ids(dp_ge, dp_gt, require_in_match=True)
     assert len(np.unique(ids)) == len(ids)
 
     grid_extrem['N_p'] = grid_tbl.N_p.values[ids]
+    grid_extrem['chla_p'] = grid_tbl.chla_p.values[ids]
 
     # Add to df
     grid_extrem['year'] = times.year
@@ -226,7 +285,7 @@ def fig_timeseries(outfile:str, line, vmax=1.3):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
-def fig_event(outfile:str, line:str, event:str, p_off:int=15,
+def fig_event(outfile:str, line:str, event:str, t_off,
     max_depth=10):
 
     items = load_up(line)
@@ -236,19 +295,17 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     grid_tbl = items[3]
 
 
-
+    # Grab event
     tevent = pandas.Timestamp(event)
-    imin = np.argmin(np.abs(times-tevent))
-    cidx = grid_extrem.iloc[imin].cluster
-
-    # Range of dates
-    in_cluster = grid_extrem.cluster == cidx
-
-    p_min = grid_extrem.profile[in_cluster].min() - p_off
-    p_max = grid_extrem.profile[in_cluster].max() + p_off
+    tmin = tevent - pandas.Timedelta(t_off)
+    tmax = tevent + pandas.Timedelta(t_off)
 
     # DOY
     otimes = pandas.to_datetime(ds.time.data)
+    in_event = (ds.time >= tmin) & (ds.time <= tmax)
+    p_min = ds.profile[in_event].values.min() 
+    p_max = ds.profile[in_event].values.max() 
+
     x_lims = mdates.date2num([otimes[p_min], otimes[p_max]])
 
 
@@ -362,7 +419,18 @@ def fig_event(outfile:str, line:str, event:str, p_off:int=15,
     print(f"Saved: {outfile}")
 
 
-def fig_percentiles(outfile:str, line:str):
+def fig_percentiles(outfile:str, line:str, metric='N'):
+
+    # Figure
+    #sns.set()
+    fig = plt.figure(figsize=(12,12))
+    plt.clf()
+
+    if metric == 'N':
+        cmap = 'Blues'
+    elif metric == 'chla':
+        cmap = 'Greens'
+    
 
     # Load
     items = load_up(line)
@@ -371,29 +439,177 @@ def fig_percentiles(outfile:str, line:str):
     times = items[2]
     grid_tbl = items[3]
 
-    # Figure
-    fig = plt.figure(figsize=(12,12))
-    plt.clf()
-    ax = plt.gca()
+        #sns.histplot(data=grid_extrem, x='doxy_p', y='N_p', ax=ax)
 
-    #sns.histplot(data=grid_extrem, x='doxy_p', y='N_p', ax=ax)
+    jg = sns.jointplot(data=grid_extrem, x='doxy_p', 
+                    y=f'{metric}_p',
+                    kind='hex', bins='log', # gridsize=250, #xscale='log',
+                    # mincnt=1,
+                    cmap=cmap,
+                    marginal_kws=dict(fill=False, color='black', 
+                                        bins=100)) 
 
-    jg = sns.jointplot(data=grid_extrem, x='doxy_p', y='N_p',
-                        kind='hex', bins='log', # gridsize=250, #xscale='log',
-                       # mincnt=1,
-                       cmap=plt.get_cmap('autumn'), 
-                       marginal_kws=dict(fill=False, color='black', 
-                                         bins=100)) 
-
-    #plt.colorbar()
     # Axes                                 
-    jg.ax_joint.set_ylabel('Buoyancy Percentile')
+    jg.ax_joint.set_ylabel(f'{metric} Percentile')
     jg.ax_joint.set_xlabel('DO Percentile')
     plot_utils.set_fontsize(jg.ax_joint, 14)
-    #jg.ax_joint.set_ylim(ymnx)
+
+        # Submplit
+        #mg0 = SeabornFig2Grid(jg, fig, gs[ss])
+        #subfigs[ss] = jg
+        #fig.add_subfigure(jg)
+
     
+    #gs.tight_layout(fig)
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
+
+def fig_SO_cdf(outfile:str):
+
+    # Figure
+    fig = plt.figure(figsize=(12,6))
+    plt.clf()
+    gs = gridspec.GridSpec(1,2)
+
+    for clr, line in zip(['b','r','g'], ['90', '80', '66']):
+        # Load
+        items = load_up(line)
+        grid_extrem = items[0]
+        ds = items[1]
+        times = items[2]
+        grid_tbl = items[3]
+
+        for ss, depth in enumerate([0,1]):
+            ax = plt.subplot(gs[ss])
+            # Cut
+            cut_depth = grid_tbl.depth == depth
+            grid_plt = grid_tbl[cut_depth]
+
+            # Plot CDF
+            if ss == 0:
+                lbl = line
+            else:
+                lbl = None
+            sns.ecdfplot(x=grid_plt.SO, ax=ax, label=lbl, color=clr)
+
+    # Finish
+    for ss, depth in enumerate([0,1]):
+        ax = plt.subplot(gs[ss])
+        ax.axvline(1., color='black', linestyle='--')
+        ax.axvline(1.1, color='black', linestyle=':')
+
+        ax.set_xlim(0.5, 1.4)
+        ax.set_xlabel('Saturated Oxygen')
+        ax.set_ylabel('CDF')
+                 #label=f'SO > {SO_cut}', log_scale=log_scale)
+        ax.text(0.95, 0.05, f'depth={(depth+1)*10}m',
+                transform=ax.transAxes,
+                fontsize=15, ha='right', color='k')
+        plot_utils.set_fontsize(ax, 15)
+
+    ax = plt.subplot(gs[0])
+    ax.legend(fontsize=15., loc='upper left')
+
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+def fig_dist_doy(outfile:str, line:str):
+
+    if line == '90':
+        color= 'b'
+    else:
+        color= 'g'
+
+    # Figure
+    #sns.set()
+    fig = plt.figure(figsize=(12,12))
+    plt.clf()
+    #ax = plt.gca()
+
+    # Load
+    items = load_up(line)
+    grid_extrem = items[0]
+    ds = items[1]
+    times = items[2]
+    grid_tbl = items[3]
+
+    jg = sns.jointplot(data=grid_extrem, x='dist', 
+                    y='doy', color=color,
+                    #kind='hex', bins='log', # gridsize=250, #xscale='log',
+                    # mincnt=1,
+                    #cmap=plt.get_cmap('autumn'), 
+                    marginal_kws=dict(fill=False, color='black', 
+                                        bins=100)) 
+
+    # Axes                                 
+    jg.ax_joint.set_ylabel('DOY')
+    jg.ax_joint.set_xlabel('Distance from shore (km)')
+    jg.ax_joint.set_ylim(0., 365.)
+    fsz = 14.
+    jg.ax_joint.text(0.95, 0.95, f'line {line}',
+                transform=jg.ax_joint.transAxes,
+                fontsize=fsz, ha='right', color='k')
+    plot_utils.set_fontsize(jg.ax_joint, 14)
+
+    
+    #gs.tight_layout(fig)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+def fig_scatter_event(outfile:str, line:str, event:str, t_off):
+
+    # Load
+    items = load_up(line)
+    grid_extrem = items[0]
+    ds = items[1]
+    times = items[2]
+    grid_tbl = items[3]
+
+    # Grab event
+    tevent = pandas.Timestamp(event)
+    tmin = tevent - pandas.Timedelta(t_off)
+    tmax = tevent + pandas.Timedelta(t_off)
+
+    # In event
+    in_event = (grid_extrem.time >= tmin) & (grid_extrem.time <= tmax)
+    ds_in_event = (ds.time >= tmin) & (ds.time <= tmax)
+
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+
+    gs = gridspec.GridSpec(2,3)
+
+    for ss, metric in enumerate(['SO', 'doxy', 'N', 'T', 'chla', 'lon']):
+        ax = plt.subplot(gs[ss])
+
+        if metric == 'T':
+            ds_metric = 'temperature'
+        elif metric == 'chla':
+            ds_metric = 'chlorophyll_a'
+        else:
+            ds_metric = metric
+
+        # Plot all
+        srt = np.argsort(ds.time[ds_in_event].values)
+        plt_depth = 0
+        if metric in ['lon']:
+            ax.plot(ds.time[ds_in_event][srt], ds[ds_metric][ds_in_event][srt], 'k-')
+        else:
+            ax.plot(ds.time[ds_in_event][srt], ds[ds_metric][plt_depth,ds_in_event][srt], 'k-')
+
+        for depth, clr in zip(np.arange(3), ['b', 'g', 'r']):
+            at_d = grid_extrem.depth[in_event] == depth
+            ax.scatter(grid_extrem.time[in_event][at_d], grid_extrem[metric][in_event][at_d], color=clr)
+
+        ax.set_ylabel(metric)
+
+        plot_utils.set_fontsize(ax, 13.)
+
+    #gs.tight_layout(fig)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
 
 def main(flg):
     if flg== 'all':
@@ -415,31 +631,60 @@ def main(flg):
 
     # Time-series
     if flg & (2**2):
-        #line = '90'
-        #line = '80'
         line = '66'
+        line = '80'
+        line = '90'
         fig_timeseries(f'fig_timeseries_{line}.png', line)
 
     # Events
     if flg & (2**3):
-        '''
         line = '90'
-        eventA = ('2020-09-01', 25) # Sub-surface
-        eventB = ('2019-08-15', 30)
-        eventC = ('2019-03-02', 10)
-        '''
+        eventA = ('2020-09-01', '2W') # Sub-surface
+        eventB = ('2019-08-15', '3W')
+        eventC = ('2019-03-02', '1W') # Spring
+        eventD = ('2021-08-10', '3W') # Surface but abrupt start
 
-        line = '80'
-        eventA = ('2021-09-15', 15) # 
+        #line = '80'
+        #eventA = ('2021-09-15', 15) # 
+
 
         #for event in [eventA, eventB, eventC]:
-        for event, p_off in [eventA]:
-            fig_event(f'fig_event_{line}_{event}.png', line, event, p_off=p_off)
+        for event, t_off in [eventC]:
+            fig_event(f'fig_event_{line}_{event}.png', line, event, t_off)
 
     # Percentiles of DO and N
     if flg & (2**4):
         line = '90'
-        fig_percentiles(f'fig_percentiles_{line}.png', line)
+        metric = 'chla'
+        metric = 'N'
+        fig_percentiles(f'fig_percentiles_{line}_{metric}.png', 
+                        line, metric=metric)
+
+    # SO CDF
+    if flg & (2**5):
+        #line = '90'
+        #fig_pdf_cdf(f'fig_pdf_cdf_{line}.png', line)
+        fig_SO_cdf(f'fig_SO_cdf.png')
+
+    # dist vs DOY
+    if flg & (2**6):
+        line = '90'
+        line = '80'
+        fig_dist_doy(f'fig_dist_doy_{line}.png', line)
+
+    # Scatter event
+    if flg & (2**7):
+        line = '90'
+        eventA = ('2020-09-01', '2W') # Sub-surface
+        eventB = ('2019-08-15', '3W') # Surface but abrupt start
+        eventC = ('2019-03-02', '1W') # Spring
+        eventD = ('2021-08-10', '3W') # Surface but abrupt start
+        event, t_off = eventC
+        fig_scatter_event(f'fig_scatter_event_{line}_{event}.png', 
+                     line, event, t_off)
+
+    
+
 
 # Command line execution
 if __name__ == '__main__':
@@ -452,6 +697,9 @@ if __name__ == '__main__':
         #flg += 2 ** 2  # 4 -- time-series of outliers
         #flg += 2 ** 3  # 8 -- Show individual events
         #flg += 2 ** 4  # 16 -- Percentiles
+        #flg += 2 ** 5  # 32 -- SO CDF
+        #flg += 2 ** 6  # 64 -- dist vs DOY
+        #flg += 2 ** 7  # 128 -- dist vs DOY
     else:
         flg = sys.argv[1]
 
