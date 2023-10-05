@@ -650,12 +650,13 @@ def main(flg):
         eventC = ('2019-03-02', '1W') # Spring
         eventD = ('2021-08-10', '3W') # Surface but abrupt start
 
-        #line = '80'
-        #eventA = ('2021-09-15', 15) # 
+        line = '80'
+        eventA = ('2020-08-11', '1W') # 
+        eventB = ('2022-02-15', '2W') # 
 
 
         #for event in [eventA, eventB, eventC]:
-        for event, t_off in [eventC]:
+        for event, t_off in [eventB]:
             fig_event(f'fig_event_{line}_{event}.png', line, event, t_off)
 
     # Percentiles of DO and N
