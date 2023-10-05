@@ -574,6 +574,12 @@ def fig_scatter_event(outfile:str, line:str, event:str, t_off):
     in_event = (grid_extrem.time >= tmin) & (grid_extrem.time <= tmax)
     ds_in_event = (ds.time >= tmin) & (ds.time <= tmax)
 
+    # Mission
+    missions = np.unique(ds.mission[ds_in_event].data)
+    mission_profiles = np.unique(ds.mission_profile[ds_in_event].data)
+    print(f'Missions: {missions}')
+    #print(f'Mission Profiles: {mission_profiles}')
+
 
     fig = plt.figure(figsize=(12,10))
     plt.clf()
@@ -654,9 +660,9 @@ def main(flg):
 
     # Percentiles of DO and N
     if flg & (2**4):
-        line = '90'
-        metric = 'chla'
+        line = '80'
         metric = 'N'
+        metric = 'chla'
         fig_percentiles(f'fig_percentiles_{line}_{metric}.png', 
                         line, metric=metric)
 
@@ -679,7 +685,16 @@ def main(flg):
         eventB = ('2019-08-15', '3W') # Surface but abrupt start
         eventC = ('2019-03-02', '1W') # Spring
         eventD = ('2021-08-10', '3W') # Surface but abrupt start
-        event, t_off = eventC
+
+        # Bad
+        eventN = ('2020-05-10', '2W') # Surface but abrupt start
+        eventO = ('2022-03-01', '2W') # Surface but abrupt start
+
+        line = '80'
+        eventA = ('2020-08-11', '1W') # 
+        eventB = ('2022-02-15', '2W') # 
+
+        event, t_off = eventB
         fig_scatter_event(f'fig_scatter_event_{line}_{event}.png', 
                      line, event, t_off)
 
