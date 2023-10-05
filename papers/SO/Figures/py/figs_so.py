@@ -5,6 +5,7 @@ import xarray
 
 import numpy as np
 from scipy import stats
+from scipy.interpolate import interp1d 
 
 from matplotlib import pyplot as plt
 import matplotlib as mpl
@@ -24,6 +25,9 @@ from siosandbox.cugn import clusters
 from siosandbox.cugn import io as cugn_io
 from siosandbox import plot_utils
 from siosandbox import cat_utils
+
+from gsw import conversions, density
+import gsw
 
 from IPython import embed
 
@@ -616,6 +620,58 @@ def fig_scatter_event(outfile:str, line:str, event:str, t_off):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
+def fig_dSO_dT():
+    outfile = 'fig_dSO_dT.png'
+
+    # Load (just for lon, lat)
+    line = '90'
+    items = cugn_io.load_line(line)
+    grid_tbl = items['grid_tbl']
+    ds = items['ds']
+    z=10. # m
+
+    SA = 33.7  # a canonical value
+    lat = np.nanmedian(ds.lat.data)
+    lon = np.nanmedian(ds.lon.data)
+    p = conversions.p_from_z(-z, lat)
+    DO = 260.
+
+    # Interpolators
+    CTs = np.linspace(12., 20., 100)
+    OCs = gsw.O2sol(SA, CTs, p, lon, lat)
+
+    f_T_OC = interp1d(CTs, OCs)
+    f_OC_T = interp1d(OCs, CTs)
+
+    DO_SO1 = OCs
+    DO_SO105 = 1.05 * OCs
+
+    dOC_dT = np.gradient(DO_SO1, CTs[1]-CTs[0])
+    dSO_dT = -1*DO_SO1 / OCs**2 * dOC_dT
+
+    dSO105_dT = -1*DO_SO105 / OCs**2 * dOC_dT
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    ax = plt.gca()
+
+    ax.plot(CTs, dSO_dT, 'k-', label='SO=1')
+    ax.plot(CTs, dSO105_dT, 'b-', label='SO=1.05')
+
+    ax.set_ylim(0., 0.025)
+
+    # Label
+    ax.set_xlabel('Temperature (deg C)')
+    ax.set_ylabel('dSO/dT (1/deg C)')
+
+    fsz = 21.
+    plot_utils.set_fontsize(ax, fsz)
+
+    ax.legend(fontsize=fsz)
+
+    #gs.tight_layout(fig)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
 
 def main(flg):
     if flg== 'all':
@@ -699,6 +755,10 @@ def main(flg):
         fig_scatter_event(f'fig_scatter_event_{line}_{event}.png', 
                      line, event, t_off)
 
+    # Scatter event
+    if flg & (2**8):
+        fig_dSO_dT()
+        
     
 
 
@@ -716,6 +776,7 @@ if __name__ == '__main__':
         #flg += 2 ** 5  # 32 -- SO CDF
         #flg += 2 ** 6  # 64 -- dist vs DOY
         #flg += 2 ** 7  # 128 -- dist vs DOY
+        #flg += 2 ** 8  # 256 -- dSO/dT
     else:
         flg = sys.argv[1]
 
