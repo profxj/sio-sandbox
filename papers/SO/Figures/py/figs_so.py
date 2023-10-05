@@ -292,6 +292,7 @@ def fig_timeseries(outfile:str, line, vmax=1.3):
 def fig_event(outfile:str, line:str, event:str, t_off,
     max_depth=10):
 
+    # Load
     items = load_up(line)
     grid_extrem = items[0]
     ds = items[1]
@@ -673,6 +674,82 @@ def fig_dSO_dT():
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
+def fig_T_fluctuations(outfile:str, line:str, debug:bool=False):
+
+
+    # Load
+    items = load_up(line)
+    grid_extrem = items[0]
+    ds = items[1]
+    times = items[2]
+    grid_tbl = items[3]
+
+    # Grab event
+    current_time = pandas.Timestamp('2000-01-01')
+    later = grid_extrem.time > current_time
+    ds_mjd = pandas.to_datetime(ds.time.data).to_julian_date()
+
+    rms_T = []
+    while(np.sum(later) > 0):
+        # Find the next one
+        next_idx = np.where(later)[0][0]
+        event = grid_extrem.iloc[next_idx]
+        tevent = event.time
+
+        # Mission number too
+        mn = ds.mission.data[event.profile]
+
+        # t interval
+        tmin = tevent - pandas.Timedelta('5D')
+        tmax = tevent + pandas.Timedelta('20D')
+
+        in_event = ((ds.time >= tmin) & (ds.time <= tmax) & (
+           ds.mission == mn)).data
+
+        # Fit a line
+        in_times = ds_mjd[in_event] - ds_mjd[in_event][0]
+        Ts = ds.temperature[0, in_event].data
+        # Keep the good ones
+        good = np.isfinite(Ts)
+        in_times = in_times[good]
+        Ts = Ts[good]
+        fit = np.polyfit(in_times, Ts, 1)
+        #except:
+        #    embed(header='fig_T_fluctuations')
+        if debug:
+            plt.clf()
+            ax = plt.gca()
+            ax.scatter(in_times, Ts)
+            ax.plot(in_times, fit[1] + fit[0]*in_times, 'k-')
+            plt.show()
+        # RMS
+        res = Ts - (fit[1] + fit[0]*in_times)
+        rms_T.append(np.sqrt(np.mean(res**2)))
+
+        # Update
+        later = grid_extrem.time > tmax
+
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    ax = plt.gca()
+
+    sns.histplot(rms_T, ax=ax, bins=15)
+
+    #ax.set_ylim(0., 0.025)
+
+    # Label
+    ax.set_xlabel('RMS Temperature (deg C)')
+    #ax.set_ylabel('dSO/dT (1/deg C)')
+
+    fsz = 21.
+    plot_utils.set_fontsize(ax, fsz)
+
+    #gs.tight_layout(fig)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+
 def main(flg):
     if flg== 'all':
         flg= np.sum(np.array([2 ** ii for ii in range(25)]))
@@ -758,6 +835,12 @@ def main(flg):
     # Scatter event
     if flg & (2**8):
         fig_dSO_dT()
+
+    # T fluctuations
+    if flg & (2**9):
+        line = '90'
+        fig_T_fluctuations(f'fig_T_fluctuations_{line}.png', line)
+        
         
     
 
@@ -777,6 +860,7 @@ if __name__ == '__main__':
         #flg += 2 ** 6  # 64 -- dist vs DOY
         #flg += 2 ** 7  # 128 -- dist vs DOY
         #flg += 2 ** 8  # 256 -- dSO/dT
+        #flg += 2 ** 9  # 512 -- T fluctuations
     else:
         flg = sys.argv[1]
 
