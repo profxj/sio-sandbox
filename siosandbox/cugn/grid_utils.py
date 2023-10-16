@@ -18,7 +18,8 @@ default_bins = dict(SA=np.linspace(32.8, 34.8, 50),
                 CT=np.linspace(5, 22.5, 50))
 
 def gen_grid(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
-            stat:str='median', bins:dict=None):
+            stat:str='median', bins:dict=None,
+            variable:str='doxy'):
 
     # Default bins -- Line 90
     if bins is None:
@@ -28,13 +29,18 @@ def gen_grid(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
     xkey, ykey = axes
     
     gd = np.isfinite(ds[xkey]) & np.isfinite(ds[ykey]) & np.isfinite(ds.doxy)
+    if variable in ['depth']:
+        var_data = np.outer(ds.depth.data, np.ones_like(ds.profile))
+    else:
+        var_data = ds[variable].data
+
 
     # Histogram
-    med_oxy, xedges, yedges, grid_indices =\
+    measure, xedges, yedges, grid_indices =\
             stats.binned_statistic_2d(
                 ds[xkey].data[gd], 
                 ds[ykey].data[gd], 
-                ds.doxy.data[gd],
+                var_data[gd],
                 statistic=stat,
                 bins=[bins[xkey], bins[ykey]],
                 expand_binnumbers=True)
@@ -46,7 +52,7 @@ def gen_grid(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
                 bins=[bins[xkey], bins[ykey]])
 
     # Return
-    return med_oxy, xedges, yedges, counts, grid_indices, ds.doxy.data[gd], gd
+    return measure, xedges, yedges, counts, grid_indices, ds.doxy.data[gd], gd
 
 def chk_grid_gaussianity(values:np.ndarray, mean_grid:np.ndarray,
                          rms_grid:np.ndarray, indices:np.ndarray,

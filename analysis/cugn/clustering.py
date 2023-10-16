@@ -71,7 +71,9 @@ def build_grid(line_file:str, gridtbl_outfile:str, edges_outfile:str,
 
     # Save
     grid_tbl.to_parquet(gridtbl_outfile)
-    np.savez(edges_outfile, SA_edges=SA_edges, sigma_edges=sigma_edges)
+    np.savez(edges_outfile, SA_edges=SA_edges, 
+             sigma_edges=sigma_edges,
+             counts=countsT)
     print(f"Wrote: \n {gridtbl_outfile} \n {edges_outfile}")
 
 
@@ -187,12 +189,13 @@ def main(flg):
     # Build Grid
     if flg & (2**0):
         line = '90'
-        line = '80'
-        line = '66'
+        #line = '80'
+        #line = '66'
         line_files = cugn_io.line_files(line)
 
         build_grid(line_files['datafile'],
-            line_files['gridtbl_file'], line_files['edges_file'])
+            line_files['gridtbl_file'], 
+            line_files['edges_file'])
 
     # Year of outliers (testing)
     if flg & (2**1):

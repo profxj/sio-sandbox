@@ -670,7 +670,6 @@ def fig_dSO_dT():
 
     ax.legend(fontsize=fsz)
 
-    #gs.tight_layout(fig)
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
@@ -745,9 +744,87 @@ def fig_T_fluctuations(outfile:str, line:str, debug:bool=False):
     fsz = 21.
     plot_utils.set_fontsize(ax, fsz)
 
-    #gs.tight_layout(fig)
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
+
+def fig_joint_pdf(line:str):
+
+    def gen_cb(img, lbl, csz = 17.):
+        cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
+        cbaxes.set_label(lbl, fontsize=csz)
+        cbaxes.ax.tick_params(labelsize=csz)
+
+    outfile = f'fig_jointPDF_{line}.png'
+
+    # Load
+    items = cugn_io.load_line(line)
+    ds = items['ds']
+
+    # Grids
+
+    # Oxygen
+    mean_oxy, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=('SA', 'CT'), stat='mean', variable='doxy')
+
+    # PDF
+    dSA = xedges[1] - xedges[0]
+    dsigma = yedges[1] - yedges[0]
+
+    p_norm = np.sum(counts) * (dSA * dsigma)
+    consv_pdf = counts / p_norm
+    #embed(header='764 of figs_so')
+
+    # z
+    mean_z, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=('SA', 'CT'), stat='mean', variable='depth')
+
+    # chlorophyll
+    mean_chl, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=('SA', 'CT'), stat='nanmean', variable='chlorophyll_a')
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    gs = gridspec.GridSpec(2,2)
+
+    # #####################################################
+    # PDF
+    ax_pdf = plt.subplot(gs[0])
+    img = ax_pdf.pcolormesh(xedges, yedges, np.log10(consv_pdf.T), 
+                            cmap='Blues')
+    gen_cb(img, r'$\log_{10} \, p(S_A,\sigma)$')
+
+    # #####################################################
+    # DO
+    ax_DO = plt.subplot(gs[1])
+    img = ax_DO.pcolormesh(xedges, yedges, mean_oxy.T, cmap='Purples')
+    gen_cb(img, 'DO (umol/kg)')
+
+    # #####################################################
+    # z
+    ax_z = plt.subplot(gs[2])
+    img = ax_z.pcolormesh(xedges, yedges, mean_z.T, cmap='inferno_r')
+    gen_cb(img, 'z (m)')
+
+    # #####################################################
+    # z
+    ax_chla = plt.subplot(gs[3])
+    img = ax_chla.pcolormesh(xedges, yedges, 
+                             np.log10(mean_chl.T), 
+                             cmap='Greens')
+    gen_cb(img, 'Chla (mg/m^3)')
+
+    # ##########################################################
+
+    fsz = 17.
+    for ax in [ax_pdf, ax_DO, ax_z, ax_chla]:
+        ax.set_xlabel('Absolute Salinity (g/kg)')                    
+        ax.set_ylabel('Conservative Temperature (C)')
+        plot_utils.set_fontsize(ax, fsz)
+    
+    plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
 
 
 def main(flg):
@@ -840,10 +917,12 @@ def main(flg):
     if flg & (2**9):
         line = '90'
         fig_T_fluctuations(f'fig_T_fluctuations_{line}.png', line)
-        
-        
-    
 
+    # T fluctuations
+    if flg & (2**10):
+        line = '90'
+        fig_joint_pdf(line)
+        
 
 # Command line execution
 if __name__ == '__main__':
@@ -861,6 +940,7 @@ if __name__ == '__main__':
         #flg += 2 ** 7  # 128 -- dist vs DOY
         #flg += 2 ** 8  # 256 -- dSO/dT
         #flg += 2 ** 9  # 512 -- T fluctuations
+        #flg += 2 ** 10  # 1024 -- joint PDF
     else:
         flg = sys.argv[1]
 
