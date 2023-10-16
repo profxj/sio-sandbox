@@ -11,6 +11,8 @@ from matplotlib import pyplot as plt
 import matplotlib as mpl
 import matplotlib.gridspec as gridspec
 import matplotlib.dates as mdates
+from matplotlib.ticker import MultipleLocator 
+
 mpl.rcParams['font.family'] = 'stixgeneral'
 
 
@@ -32,6 +34,10 @@ import gsw
 from IPython import embed
 
 
+def gen_cb(img, lbl, csz = 17.):
+    cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
+    cbaxes.set_label(lbl, fontsize=csz)
+    cbaxes.ax.tick_params(labelsize=csz)
 class SeabornFig2Grid():
 
     def __init__(self, seaborngrid, fig,  subplot_spec):
@@ -497,6 +503,12 @@ def fig_SO_cdf(outfile:str):
                 lbl = None
             sns.ecdfplot(x=grid_plt.SO, ax=ax, label=lbl, color=clr)
 
+            # Stats
+            srt = np.argsort(grid_plt.SO.values)
+            cdf = np.arange(len(grid_plt.SO))/len(grid_plt.SO)
+            idx = np.argmin(np.abs(cdf-0.95))
+            print(f'95% for {line} {depth}m: {grid_plt.SO.values[srt][idx]}')
+
     # Finish
     for ss, depth in enumerate([0,1]):
         ax = plt.subplot(gs[ss])
@@ -747,14 +759,14 @@ def fig_T_fluctuations(outfile:str, line:str, debug:bool=False):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
-def fig_joint_pdf(line:str):
+def fig_joint_pdfs(line:str):
 
     def gen_cb(img, lbl, csz = 17.):
         cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
         cbaxes.set_label(lbl, fontsize=csz)
         cbaxes.ax.tick_params(labelsize=csz)
 
-    outfile = f'fig_jointPDF_{line}.png'
+    outfile = f'fig_jointPDFs_{line}.png'
 
     # Load
     items = cugn_io.load_line(line)
@@ -811,7 +823,7 @@ def fig_joint_pdf(line:str):
     img = ax_chla.pcolormesh(xedges, yedges, 
                              np.log10(mean_chl.T), 
                              cmap='Greens')
-    gen_cb(img, 'Chla (mg/m^3)')
+    gen_cb(img, r'$\log_{10}$ Chla (mg/m^3)')
 
     # ##########################################################
 
@@ -819,11 +831,131 @@ def fig_joint_pdf(line:str):
     for ax in [ax_pdf, ax_DO, ax_z, ax_chla]:
         ax.set_xlabel('Absolute Salinity (g/kg)')                    
         ax.set_ylabel('Conservative Temperature (C)')
+        # Set x-axis interval to 0.5
+        ax.xaxis.set_major_locator(MultipleLocator(0.5))
+        # 
         plot_utils.set_fontsize(ax, fsz)
     
     plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
+
+def fig_joint_pdf(line:str, xvar:str, yvar:str):
+
+    def gen_cb(img, lbl, csz = 17.):
+        cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
+        cbaxes.set_label(lbl, fontsize=csz)
+        cbaxes.ax.tick_params(labelsize=csz)
+
+    outfile = f'fig_jointPDF_{line}_{xvar}_{yvar}.png'
+
+    # Load
+    items = cugn_io.load_line(line)
+    ds = items['ds']
+
+    # PDF
+    _, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=(xvar, yvar), stat='mean', variable='doxy')
+
+    # PDF
+    dx = xedges[1] - xedges[0]
+    dy = yedges[1] - yedges[0]
+
+    p_norm = np.sum(counts) * (dx * dy)
+    consv_pdf = counts / p_norm
+    #embed(header='764 of figs_so')
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    ax = plt.gca()
+
+    # #####################################################
+    # PDF
+    img = ax.pcolormesh(xedges, yedges, np.log10(consv_pdf.T), 
+                            cmap='autumn')
+    gen_cb(img, r'$\log_{10} \, p('+f'{xvar},{yvar})$')
+
+    # ##########################################################
+    tsz = 19.
+    ax.text(0.05, 0.9, f'Line={line}',
+                transform=ax.transAxes,
+                fontsize=tsz, ha='left', color='k')
+
+    fsz = 17.
+    ax.set_xlabel(xvar)
+    ax.set_ylabel(yvar)
+    # Set x-axis interval to 0.5
+    #ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    # 
+    plot_utils.set_fontsize(ax, fsz)
+    
+    plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+
+def fig_avgSO_zd(line:str):
+
+
+    outfile = f'fig_avgSO_zd_{line}.png'
+
+    # Load
+    items = cugn_io.load_line(line)
+    ds = items['ds']
+
+    # Grid
+    zbins= np.linspace(0., 500, 50)
+    dbins = np.linspace(0., 500., 50)
+
+    xdata = np.outer(ds.depth.data, np.ones_like(ds.profile))
+
+    dist, _ = cugn_utils.calc_dist_offset(
+        line, ds.lon.values, ds.lat.values)
+    ydata = np.outer(np.ones_like(ds.depth.data), dist)
+
+    gd = np.isfinite(ds.SO.data)
+
+    measure, xedges, yedges, grid_indices =\
+            stats.binned_statistic_2d(
+                xdata[gd].astype(float),
+                ydata[gd],
+                ds.SO.data[gd],
+                statistic='mean',
+                bins=[zbins, dbins],
+                expand_binnumbers=True)
+
+
+
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    ax = plt.gca()
+
+    # #####################################################
+    # PDF
+    img = ax.pcolormesh(xedges, yedges, measure,
+                            cmap='Reds')
+    gen_cb(img, 'Mean SO') 
+
+    # ##########################################################
+    tsz = 19.
+    ax.text(0.05, 0.1, f'Line={line}',
+                transform=ax.transAxes,
+                fontsize=tsz, ha='left', color='k')
+
+    fsz = 17.
+    ax.set_xlabel('Offshore Distance (km)')
+    ax.set_ylabel('z (m)')
+    ax.invert_yaxis()
+    ax.invert_xaxis()
+    # Set x-axis interval to 0.5
+    #ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    # 
+    plot_utils.set_fontsize(ax, fsz)
+    
+    plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
 
 
 
@@ -880,8 +1012,7 @@ def main(flg):
     # SO CDF
     if flg & (2**5):
         #line = '90'
-        #fig_pdf_cdf(f'fig_pdf_cdf_{line}.png', line)
-        fig_SO_cdf(f'fig_SO_cdf.png')
+        fig_SO_cdf('fig_SO_cdf.png')
 
     # dist vs DOY
     if flg & (2**6):
@@ -918,10 +1049,21 @@ def main(flg):
         line = '90'
         fig_T_fluctuations(f'fig_T_fluctuations_{line}.png', line)
 
-    # T fluctuations
+    # Joint PDFs
     if flg & (2**10):
         line = '90'
-        fig_joint_pdf(line)
+        fig_joint_pdfs(line)
+
+    # Joint PDF
+    if flg & (2**11):
+        line = '90'
+        line = '80'
+        fig_joint_pdf(line, 'SO', 'N')
+
+    # <SO>(z,d)
+    if flg & (2**12):
+        line = '90'
+        fig_avgSO_zd(line)
         
 
 # Command line execution
@@ -940,7 +1082,9 @@ if __name__ == '__main__':
         #flg += 2 ** 7  # 128 -- dist vs DOY
         #flg += 2 ** 8  # 256 -- dSO/dT
         #flg += 2 ** 9  # 512 -- T fluctuations
-        #flg += 2 ** 10  # 1024 -- joint PDF
+        #flg += 2 ** 10  # 1024 -- joint PDFs
+        #flg += 2 ** 11  # 2048 -- joint PDF of X,Y
+        #flg += 2 ** 12  # 4096 -- SO(z,d)
     else:
         flg = sys.argv[1]
 
