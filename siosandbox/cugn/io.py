@@ -42,7 +42,7 @@ def load_line(line:str):
 
 
 
-def load_up(line):
+def load_up(line:str, skip_dist:bool=False):
     # Load
     items = load_line(line)
     grid_tbl = items['grid_tbl']
@@ -76,10 +76,10 @@ def load_up(line):
     grid_extrem['doy'] = times.dayofyear
 
     # Add distance from shore
-
-    dist, _ = cugn_utils.calc_dist_offset(
-        line, grid_extrem.lon.values, grid_extrem.lat.values)
-    grid_extrem['dist'] = dist
+    if not skip_dist:
+        dist, _ = cugn_utils.calc_dist_offset(
+            line, grid_extrem.lon.values, grid_extrem.lat.values)
+        grid_extrem['dist'] = dist
 
     # Cluster me
     clusters.generate_clusters(grid_extrem)

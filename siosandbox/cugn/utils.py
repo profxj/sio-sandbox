@@ -16,6 +16,8 @@ def line_endpoints(line:str):
     elif line == 'al':
         lonendpts = [-119.9593, -121.1500]
         latendpts = [32.4179, 34.1500]
+    else:
+        raise ValueError('line not recognized')
 
     return lonendpts, latendpts
 
