@@ -38,6 +38,8 @@ def gen_cb(img, lbl, csz = 17.):
     cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
     cbaxes.set_label(lbl, fontsize=csz)
     cbaxes.ax.tick_params(labelsize=csz)
+
+
 class SeabornFig2Grid():
 
     def __init__(self, seaborngrid, fig,  subplot_spec):
@@ -980,8 +982,8 @@ def main(flg):
     # Time-series
     if flg & (2**2):
         line = '66'
-        line = '80'
         line = '90'
+        line = '80'
         fig_timeseries(f'fig_timeseries_{line}.png', line)
 
     # Events
@@ -1074,7 +1076,7 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- PDF CDF
         #flg += 2 ** 1  # 2 -- Vary SO cut
-        #flg += 2 ** 2  # 4 -- time-series of outliers
+        #flg += 2 ** 2  # 4 -- Interannual time-series of outliers
         #flg += 2 ** 3  # 8 -- Show individual events
         #flg += 2 ** 4  # 16 -- Percentiles
         #flg += 2 ** 5  # 32 -- SO CDF

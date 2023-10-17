@@ -12,6 +12,11 @@ import pandas
 from gsw import conversions, density
 import gsw
 
+from siosandbox.cugn import utils as cugn_utils
+from siosandbox.cugn import grid_utils
+from siosandbox.cugn import io as cugn_io 
+
+
 from IPython import embed
 
 def add_gsw():
@@ -77,11 +82,93 @@ def add_gsw():
         ds['N'] = (('depth', 'profile'), buoyfreq)
         ds.N.attrs = dict(long_name='Buoyancy Frequency', units='cycles/hour')
 
+        # Wipe out the 2020 trip to San Diego
+        dskeys =  ['temperature', 'salinity', 'chlorophyll_a', 'u', 'v', 
+                   'acoustic_backscatter', 'doxy', 'CT', 'sigma0', 'SA', 'SO', 'N']
+        if 'line_80' in spray_file:
+            dist, _ = cugn_utils.calc_dist_offset(
+                '80', ds.lon.values, ds.lat.values)
+            bad = dist < -50.
+            # Zero em!!
+            for key in dskeys:
+                ds[key].data[:,bad] = np.nan
+
+        # Mexican trip on Line 90
+        if 'line_90' in spray_file:
+            bad = ds.mission == 63
+            for key in dskeys:
+                ds[key].data[:,bad] = np.nan
+
         # Write
         new_spray_file = spray_file.replace('CUGN_', 'CUGN_potential_')
         ds.to_netcdf(new_spray_file)
         print(f"Wrote: {new_spray_file}")
 
+def build_ds_grid(line_file:str, gridtbl_outfile:str, edges_outfile:str,
+               min_counts:int=50):
+    """ Grid up density and salinity for a line
+    to generate a table of grid indices and values
+
+    Args:
+        line_file (str): Identify the line ['90', '67']
+        gridtbl_outfile (str): name of the output table
+        edges_outfile (str): name of the output grid edges
+        min_counts (int, optional): Minimum counts on the
+            grid to be included in the analysis. Defaults to 50.
+    """
+    # Dataset
+    ds = xarray.load_dataset(line_file)
+
+    # Generate the grid
+    mean_oxyT, SA_edges, sigma_edges, countsT, \
+        grid_indices, gd_oxy, da_gd = grid_utils.gen_grid(ds, stat='mean')
+
+    # Table me
+    depth, profile = np.where(da_gd)
+    grid_tbl = pandas.DataFrame()
+
+    grid_tbl['depth'] = depth
+    grid_tbl['profile'] = profile
+    grid_tbl['row'] = grid_indices[0,:] - 1
+    grid_tbl['col'] = grid_indices[1,:] - 1
+    grid_tbl['doxy'] = gd_oxy
+
+    # Cut on counts
+    gd_rows, gd_cols = np.where(countsT > min_counts)
+
+    # Keep only the good ones
+    keep = np.zeros(len(grid_tbl), dtype=bool)
+    for gd_row, gd_col in zip(gd_rows, gd_cols):
+        keep |= (grid_tbl.row == gd_row) & (grid_tbl.col == gd_col)
+
+    grid_tbl = grid_tbl[keep].copy()
+    grid_tbl.reset_index(inplace=True, drop=True)
+
+    # Generate DO percentile
+    grid_utils.find_perc(grid_tbl)
+
+    # Test
+    #in_cell = (grid_tbl.row == 41) & (grid_tbl.col == 45)
+    #vals = grid_tbl.doxy.values[in_cell]
+    #pct = np.nanpercentile(vals, 5)
+
+    # Save
+    grid_tbl.to_parquet(gridtbl_outfile)
+    np.savez(edges_outfile, SA_edges=SA_edges, 
+             sigma_edges=sigma_edges,
+             counts=countsT)
+    print(f"Wrote: \n {gridtbl_outfile} \n {edges_outfile}")
+
+
 
 if __name__ == '__main__':
+    # Add potential density and salinity to the CUGN files
     add_gsw()
+
+    # Grids
+    for line in ['56', '66', '80', '90']:
+        line_files = cugn_io.line_files(line)
+
+        build_ds_grid(line_files['datafile'],
+            line_files['gridtbl_file'], 
+            line_files['edges_file'])
