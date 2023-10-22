@@ -562,6 +562,7 @@ def fig_dist_doy(outfile:str, line:str):
     jg.ax_joint.set_ylabel('DOY')
     jg.ax_joint.set_xlabel('Distance from shore (km)')
     jg.ax_joint.set_ylim(0., 365.)
+    jg.ax_joint.set_xlim(0., 365.)
     fsz = 14.
     jg.ax_joint.text(0.95, 0.95, f'line {line}',
                 transform=jg.ax_joint.transAxes,
@@ -1079,7 +1080,7 @@ if __name__ == '__main__':
         #flg += 2 ** 4  # 16 -- Percentiles
         #flg += 2 ** 5  # 32 -- SO CDF
         #flg += 2 ** 6  # 64 -- dist vs DOY
-        #flg += 2 ** 7  # 128 -- dist vs DOY
+        #flg += 2 ** 7  # 128 -- scatter event
         #flg += 2 ** 8  # 256 -- dSO/dT
         #flg += 2 ** 9  # 512 -- T fluctuations
         #flg += 2 ** 10  # 1024 -- joint PDFs
