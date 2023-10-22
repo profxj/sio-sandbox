@@ -38,6 +38,8 @@ def gen_cb(img, lbl, csz = 17.):
     cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
     cbaxes.set_label(lbl, fontsize=csz)
     cbaxes.ax.tick_params(labelsize=csz)
+
+
 class SeabornFig2Grid():
 
     def __init__(self, seaborngrid, fig,  subplot_spec):
@@ -475,105 +477,6 @@ def fig_percentiles(outfile:str, line:str, metric='N'):
     plt.savefig(outfile, dpi=300)
     print(f"Saved: {outfile}")
 
-def fig_SO_cdf(outfile:str):
-
-    # Figure
-    fig = plt.figure(figsize=(12,6))
-    plt.clf()
-    gs = gridspec.GridSpec(1,2)
-
-    for clr, line in zip(['b','r','g'], ['90', '80', '66']):
-        # Load
-        items = load_up(line)
-        grid_extrem = items[0]
-        ds = items[1]
-        times = items[2]
-        grid_tbl = items[3]
-
-        for ss, depth in enumerate([0,1]):
-            ax = plt.subplot(gs[ss])
-            # Cut
-            cut_depth = grid_tbl.depth == depth
-            grid_plt = grid_tbl[cut_depth]
-
-            # Plot CDF
-            if ss == 0:
-                lbl = line
-            else:
-                lbl = None
-            sns.ecdfplot(x=grid_plt.SO, ax=ax, label=lbl, color=clr)
-
-            # Stats
-            srt = np.argsort(grid_plt.SO.values)
-            cdf = np.arange(len(grid_plt.SO))/len(grid_plt.SO)
-            idx = np.argmin(np.abs(cdf-0.95))
-            print(f'95% for {line} {depth}m: {grid_plt.SO.values[srt][idx]}')
-
-    # Finish
-    for ss, depth in enumerate([0,1]):
-        ax = plt.subplot(gs[ss])
-        ax.axvline(1., color='black', linestyle='--')
-        ax.axvline(1.1, color='black', linestyle=':')
-
-        ax.set_xlim(0.5, 1.4)
-        ax.set_xlabel('Saturated Oxygen')
-        ax.set_ylabel('CDF')
-                 #label=f'SO > {SO_cut}', log_scale=log_scale)
-        ax.text(0.95, 0.05, f'depth={(depth+1)*10}m',
-                transform=ax.transAxes,
-                fontsize=15, ha='right', color='k')
-        plot_utils.set_fontsize(ax, 15)
-
-    ax = plt.subplot(gs[0])
-    ax.legend(fontsize=15., loc='upper left')
-
-    plt.savefig(outfile, dpi=300)
-    print(f"Saved: {outfile}")
-
-def fig_dist_doy(outfile:str, line:str):
-
-    if line == '90':
-        color= 'b'
-    else:
-        color= 'g'
-
-    # Figure
-    #sns.set()
-    fig = plt.figure(figsize=(12,12))
-    plt.clf()
-    #ax = plt.gca()
-
-    # Load
-    items = load_up(line)
-    grid_extrem = items[0]
-    ds = items[1]
-    times = items[2]
-    grid_tbl = items[3]
-
-    jg = sns.jointplot(data=grid_extrem, x='dist', 
-                    y='doy', color=color,
-                    #kind='hex', bins='log', # gridsize=250, #xscale='log',
-                    # mincnt=1,
-                    #cmap=plt.get_cmap('autumn'), 
-                    marginal_kws=dict(fill=False, color='black', 
-                                        bins=100)) 
-
-    # Axes                                 
-    jg.ax_joint.set_ylabel('DOY')
-    jg.ax_joint.set_xlabel('Distance from shore (km)')
-    jg.ax_joint.set_ylim(0., 365.)
-    jg.ax_joint.set_xlim(0., 365.)
-    fsz = 14.
-    jg.ax_joint.text(0.95, 0.95, f'line {line}',
-                transform=jg.ax_joint.transAxes,
-                fontsize=fsz, ha='right', color='k')
-    plot_utils.set_fontsize(jg.ax_joint, 14)
-
-    
-    #gs.tight_layout(fig)
-    plt.savefig(outfile, dpi=300)
-    print(f"Saved: {outfile}")
-
 def fig_scatter_event(outfile:str, line:str, event:str, t_off):
 
     # Load
@@ -981,8 +884,8 @@ def main(flg):
     # Time-series
     if flg & (2**2):
         line = '66'
-        line = '80'
         line = '90'
+        line = '80'
         fig_timeseries(f'fig_timeseries_{line}.png', line)
 
     # Events
@@ -1012,8 +915,7 @@ def main(flg):
 
     # SO CDF
     if flg & (2**5):
-        #line = '90'
-        fig_SO_cdf('fig_SO_cdf.png')
+        pass
 
     # dist vs DOY
     if flg & (2**6):
@@ -1075,10 +977,10 @@ if __name__ == '__main__':
         flg = 0
         #flg += 2 ** 0  # 1 -- PDF CDF
         #flg += 2 ** 1  # 2 -- Vary SO cut
-        #flg += 2 ** 2  # 4 -- time-series of outliers
+        #flg += 2 ** 2  # 4 -- Interannual time-series of outliers
         #flg += 2 ** 3  # 8 -- Show individual events
         #flg += 2 ** 4  # 16 -- Percentiles
-        #flg += 2 ** 5  # 32 -- SO CDF
+        #flg += 2 ** 5  # 32 -- 
         #flg += 2 ** 6  # 64 -- dist vs DOY
         #flg += 2 ** 7  # 128 -- scatter event
         #flg += 2 ** 8  # 256 -- dSO/dT

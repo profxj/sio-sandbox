@@ -13,12 +13,12 @@ from siosandbox.cugn import io as cugn_io
 
 from IPython import embed
 
-default_bins = dict(SA=np.linspace(32.8, 34.8, 50),
-                sigma0=np.linspace(23.0, 27.2, 50),
+default_bins = dict(SA=np.linspace(32.1, 34.8, 50),
+                sigma0=np.linspace(22.8, 27.2, 50),
                 SO=np.linspace(0., 1.5, 100),
                 z=np.linspace(0., 500, 50),
                 N=np.linspace(0., 25, 100),
-                CT=np.linspace(5, 22.5, 50))
+                CT=np.linspace(4, 22.5, 50))
 
 def gen_grid(ds:xarray.Dataset, axes:tuple=('SA', 'sigma0'),
             stat:str='median', bins:dict=None,
