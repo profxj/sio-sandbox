@@ -30,6 +30,7 @@ from siosandbox.cugn import grid_utils
 from siosandbox.cugn import utils as cugn_utils
 from siosandbox.cugn import figures
 from siosandbox.cugn import clusters
+from siosandbox.cugn import defs as cugn_defs
 from siosandbox.cugn import io as cugn_io
 from siosandbox import plot_utils
 from siosandbox import cat_utils
@@ -39,9 +40,9 @@ import gsw
 
 from IPython import embed
 
-lines =  ['56', '66', '80', '90']
-line_colors = ['r','b','g','orange']
-line_cmaps = ['Reds','Blues','Greens','Oranges']
+lines = cugn_defs.lines
+line_colors = cugn_defs.line_colors
+line_cmaps = cugn_defs.line_cmaps
 
 
 def gen_cb(img, lbl, csz = 17.):

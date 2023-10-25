@@ -15,9 +15,9 @@ data_path = os.getenv('CUGN')
 
 def line_files(line:str):
 
-    datafile = os.path.join(data_path, f'CUGN_potential_line_{line}.nc')
-    gridtbl_file = os.path.join(data_path, f'doxy_grid_line{line}.parquet')
-    edges_file = os.path.join(data_path, f'doxy_edges_line{line}.npz')
+    datafile = os.path.join(data_path, f'CUGN_potential_line_{line[0:2]}.nc')
+    gridtbl_file = os.path.join(data_path, f'doxy_grid_line{line[0:2]}.parquet')
+    edges_file = os.path.join(data_path, f'doxy_edges_line{line[0:2]}.npz')
 
     # dict em
     lfiles = dict(datafile=datafile, 
