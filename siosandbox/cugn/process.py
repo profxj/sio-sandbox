@@ -14,7 +14,8 @@ import gsw
 
 from siosandbox.cugn import utils as cugn_utils
 from siosandbox.cugn import grid_utils
-from siosandbox.cugn import io as cugn_io 
+from siosandbox.cugn import io as cugn_io
+from siosandbox.cugn import defs as cugn_defs
 
 
 from IPython import embed
@@ -166,7 +167,7 @@ if __name__ == '__main__':
     add_gsw()
 
     # Grids
-    for line in ['56', '66', '80', '90']:
+    for line in cugn_defs.lines:
         line_files = cugn_io.line_files(line)
 
         build_ds_grid(line_files['datafile'],
