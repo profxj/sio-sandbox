@@ -4,7 +4,10 @@ import numpy as np
 
 def line_endpoints(line:str):
     
-    if line == '66':
+    if line == '56':
+        lonendpts = [-123.328, -126.204]
+        latendpts = [38.502, 37.186]
+    elif line == '66':
         lonendpts = [-121.8371, -124.2000]
         latendpts = [36.8907, 35.7900]
     elif line == '80':
