@@ -267,6 +267,7 @@ def main(flg):
             fig_dist_doy(f'fig_dist_doy_{line}.png', line, clr,
                          show_legend=show_legend)
 
+    # Figure 4 -- SO vs. N
 
 # Command line execution
 if __name__ == '__main__':

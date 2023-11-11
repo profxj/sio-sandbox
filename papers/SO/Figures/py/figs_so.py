@@ -960,7 +960,7 @@ def main(flg):
     # Joint PDF
     if flg & (2**11):
         line = '90'
-        line = '80'
+        #line = '80'
         fig_joint_pdf(line, 'SO', 'N')
 
     # <SO>(z,d)
