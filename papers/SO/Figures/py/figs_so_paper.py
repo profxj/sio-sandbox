@@ -44,6 +44,12 @@ lines = cugn_defs.lines
 line_colors = cugn_defs.line_colors
 line_cmaps = cugn_defs.line_cmaps
 
+labels = dict(
+    SA='Absolute Salinity (g/kg)',
+    sigma0='Potential Density (kg/m$^3$)',
+    CT='Conservative Temperature (C)',
+    DO='Dissolved Oxygen (umol/kg)',
+)
 
 def gen_cb(img, lbl, csz = 17.):
     cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
@@ -112,6 +118,81 @@ def fig_joint_pdfs(use_density:bool=False):
                 fontsize=fsz, ha='left', color='k')
         # Grid lines
         ax.grid()
+    
+    plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
+    plt.savefig(outfile, dpi=300)
+    print(f"Saved: {outfile}")
+
+# ##########################################################
+def fig_mean_DO_SO(line, outfile:str=None):
+
+    def gen_cb(img, lbl, csz = 17.):
+        cbaxes = plt.colorbar(img, pad=0., fraction=0.030)
+        cbaxes.set_label(lbl, fontsize=csz)
+        cbaxes.ax.tick_params(labelsize=csz)
+
+    outfile = f'fig_mean_DO_SO_{line}.png'
+    # Load
+    items = cugn_io.load_line(line)
+    ds = items['ds']
+
+    # PDF
+    axes=('SA', 'sigma0')
+    mean_oxy, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=axes, stat='mean', variable='doxy')
+    mean_SO, xedges, yedges, counts, grid_indices, _, _ = grid_utils.gen_grid(
+        ds, axes=axes, stat='mean', variable='SO')
+
+    # Figure
+    fig = plt.figure(figsize=(12,10))
+    plt.clf()
+    gs = gridspec.GridSpec(2,2)
+
+    # ##########################################################
+    # DO
+    axes = []
+    for kk, mean, lbl, cmap in zip(np.arange(2), [mean_oxy, mean_SO], ['DO', 'SO'],
+                                   ['Purples', 'jet']):
+        for ss in range(2):
+            ax= plt.subplot(gs[ss+kk*2])
+
+            if ss == 0:
+                vmin,vmax = None, None
+                xmin,xmax = 32.5, 35.0
+                ymin,ymax = None, None
+            else:
+                if lbl == 'DO':
+                    vmin,vmax = 200., None
+                else:
+                    vmin,vmax = 0.5, None
+                xmin,xmax = 32.5, 34.2
+                ymin,ymax = 22.8, 25.5
+
+            axes.append(ax)
+
+            img = ax.pcolormesh(xedges, yedges, mean.T, cmap=cmap,
+                                vmin=vmin, vmax=vmax)
+            gen_cb(img, labels['DO'])
+
+            # ##########################################################
+            tsz = 19.
+            ax.text(0.05, 0.9, f'Line={line}',
+                        transform=ax.transAxes,
+                        fontsize=tsz, ha='left', color='k')
+
+            ax.set_xlabel(labels['SA'])
+            ax.set_ylabel(labels['sigma0'])
+
+            ax.set_xlim(xmin, xmax)
+            if ymin is not None:
+                ax.set_ylim(ymin, ymax)
+
+    # Set x-axis interval to 0.5
+    #ax.xaxis.set_major_locator(MultipleLocator(0.5))
+    # 
+    fsz = 17.
+    for ax in axes:
+        plot_utils.set_fontsize(ax, fsz)
     
     plt.tight_layout()#pad=0.0, h_pad=0.0, w_pad=0.3)
     plt.savefig(outfile, dpi=300)
@@ -250,17 +331,22 @@ def main(flg):
         fig_joint_pdfs()
         fig_joint_pdfs(use_density=True)
 
-    # Figure 2 -- SO CDFs
+    # Figure 2 -- average DO, SO 
     if flg & (2**1):
+        line = '90'
+        fig_mean_DO_SO(line)
+
+    # Figure 3 -- SO CDFs
+    if flg & (2**2):
         fig_SO_cdf('fig_SO_cdf.png')
 
     # Figure 3 -- DOY vs Offshore distance
-    if flg & (2**2):
+    if flg & (2**3):
         for line, clr in zip(lines, line_colors):
             # Skip for now
+            #if line == '56':
+            #    continue
             if line == '56':
-                continue
-            if line == '66':
                 show_legend = True
             else:
                 show_legend = False
@@ -276,8 +362,9 @@ if __name__ == '__main__':
     if len(sys.argv) == 1:
         flg = 0
         #flg += 2 ** 0  # 1 -- Joint PDFs of all 4 lines
-        #flg += 2 ** 1  # 2 -- SO CDF
-        #flg += 2 ** 2  # 3 -- DOY vs Offshore, 1 by 1
+        #flg += 2 ** 1  # 2 -- Mean DO, SO
+        #flg += 2 ** 2  # 4 -- SO CDF
+        #flg += 2 ** 3  # 8 -- DOY vs Offshore, 1 by 1
     else:
         flg = sys.argv[1]
 
